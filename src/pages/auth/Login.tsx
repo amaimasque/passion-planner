@@ -34,8 +34,8 @@ export default function Login() {
     try {
       setError('');
       setLoading(true);
-      await login(form.email, form.password);
-      navigate('/dashboard');
+      const { user } = await login(form.email, form.password);
+      navigate(user.emailVerified ? '/dashboard' : '/verify-email');
     } catch (err: any) {
       setError(getFirebaseError(err.code));
     } finally {

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { doc, setDoc } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../firebase';
+import { auth, db } from '../../firebase';
 import { buildDefaultBudget } from '../../data/defaultBudget';
 import { Mail, Lock, User, Sparkles, Check } from 'lucide-react';
 import Button from '../../components/ui/Button';
@@ -43,7 +44,8 @@ export default function Register() {
       setLoading(true);
       const uid = await register(form.email, form.password, form.name);
       await setDoc(doc(db, 'budgets', uid), { categories: buildDefaultBudget() });
-      navigate('/dashboard');
+      if (auth.currentUser) await sendEmailVerification(auth.currentUser);
+      navigate('/verify-email');
     } catch (err: any) {
       setError(getFirebaseError(err.code));
     } finally {

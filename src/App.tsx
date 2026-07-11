@@ -6,6 +6,7 @@ import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import VerifyEmail from './pages/auth/VerifyEmail';
 import Dashboard from './pages/dashboard/Dashboard';
 import Budget from './pages/budget/Budget';
 import Settings from './pages/settings/Settings';
@@ -48,6 +49,7 @@ function App() {
           <Route path="/checklist"      element={<PrivateLayout><Checklist /></PrivateLayout>} />
           <Route path="/media"          element={<PrivateLayout><Media /></PrivateLayout>} />
           <Route path="/settings"  element={<PrivateLayout><Settings /></PrivateLayout>} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/rsvp/:token" element={<RsvpPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
