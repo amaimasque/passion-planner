@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Sparkles, LayoutDashboard, Wallet, Store, CreditCard, Users, Heart, ListMusic,
   ClipboardList, LayoutGrid, Settings, LogOut, Menu, X, ChevronsLeft, ChevronsRight,
-  Moon, Sun, Image, Presentation, CalendarDays, ExternalLink,
+  Moon, Sun, Image, Presentation, CalendarDays, ExternalLink, Smartphone,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -20,7 +20,8 @@ const NAV_ITEMS = [
   { to: '/seating',      icon: LayoutGrid,       label: 'Seating' },
   { to: '/checklist',    icon: ClipboardList,    label: 'Checklist' },
   { to: '/media',        icon: Image,            label: 'Media & Branding' },
-  { to: '/program-flow', icon: Presentation,     label: 'Program Flow', soon: true },
+  { to: '/program-flow', icon: Presentation, label: 'Program Flow', soon: true, desc: 'Manage text scripts for your event program. Link multiple program flows — entrance, ceremonies, speeches, and more — directly to your Passion Planner.' },
+  { to: '/mobile-app',   icon: Smartphone,   label: 'Mobile App',   soon: true, desc: 'Passion Planner for iOS & Android — plan on the go, get deadline notifications, and sync with your partner in real time.' },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -100,7 +101,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         {/* Primary nav */}
         <nav className={['flex-1 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden', isCollapsed ? 'px-2' : 'px-3'].join(' ')}>
-          {NAV_ITEMS.map(({ to, icon: Icon, label, soon }) =>
+          {NAV_ITEMS.map(({ to, icon: Icon, label, soon, desc }) =>
             soon ? (
               <div
                 key={to}
@@ -124,10 +125,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     </span>
                   )}
                 </div>
-                {!isCollapsed && (
+                {!isCollapsed && desc && (
                   <div className="max-h-0 overflow-hidden group-hover:max-h-24 transition-all duration-200 ease-in-out">
                     <p className="text-[10px] text-ink-muted leading-relaxed px-3 pb-2.5">
-                      Manage text scripts for your event program. Link multiple program flows — entrance, ceremonies, speeches, and more — directly to your Passion Planner.
+                      {desc}
                     </p>
                   </div>
                 )}

@@ -13,6 +13,9 @@ import {
   ExternalLink,
   CalendarDays,
   Sparkles,
+  Smartphone,
+  Bell,
+  Wifi,
 } from 'lucide-react';
 
 const FEATURES = [
@@ -188,6 +191,154 @@ export default function Landing() {
                   <p className="text-xs leading-relaxed" style={{ color: '#6D6A70' }}>{desc}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── MOBILE APP COMING SOON ───────────────────────────────────────── */}
+      <section className="py-20 px-6" style={{ backgroundColor: '#FFFFFF' }}>
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+
+          {/* Text side */}
+          <div>
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide mb-5"
+              style={{ backgroundColor: '#FDF0F1', color: '#C97B84', border: '1px solid #E8C5CA' }}
+            >
+              <Smartphone className="w-3 h-3" /> Coming Soon
+            </span>
+
+            <h2 className="font-serif text-4xl font-bold mb-4 leading-tight" style={{ color: '#2F2F33' }}>
+              Passion Planner,<br />
+              <span style={{ color: '#C97B84' }}>in your pocket.</span>
+            </h2>
+
+            <p className="text-base leading-relaxed mb-8" style={{ color: '#6D6A70' }}>
+              The full wedding planning experience — coming to iOS and Android. Get push notifications for deadlines, manage your guest list on the go, and share updates with your partner in real time.
+            </p>
+
+            <ul className="space-y-3 mb-10">
+              {[
+                { icon: Bell,       text: 'Push notifications for upcoming deadlines & tasks' },
+                { icon: Wifi,       text: 'Offline access — plan anywhere, sync when connected' },
+                { icon: Smartphone, text: 'Native iOS & Android experience' },
+              ].map(({ icon: Icon, text }) => (
+                <li key={text} className="flex items-center gap-3 text-sm" style={{ color: '#6D6A70' }}>
+                  <span
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: '#FDF0F1' }}
+                  >
+                    <Icon className="w-3.5 h-3.5" style={{ color: '#C97B84' }} />
+                  </span>
+                  {text}
+                </li>
+              ))}
+            </ul>
+
+            {/* Store badges — coming soon */}
+            <div className="flex flex-wrap gap-3">
+              {/* App Store */}
+              <div
+                className="flex items-center gap-3 px-5 py-3 rounded-xl border opacity-60 cursor-not-allowed select-none"
+                style={{ borderColor: '#E8DDD3', backgroundColor: '#FAF7F4' }}
+                title="Coming soon"
+              >
+                <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="#2F2F33">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                <div>
+                  <div className="text-[9px] font-medium uppercase tracking-wide" style={{ color: '#6D6A70' }}>Coming soon on</div>
+                  <div className="text-sm font-semibold leading-tight" style={{ color: '#2F2F33' }}>App Store</div>
+                </div>
+              </div>
+
+              {/* Google Play */}
+              <div
+                className="flex items-center gap-3 px-5 py-3 rounded-xl border opacity-60 cursor-not-allowed select-none"
+                style={{ borderColor: '#E8DDD3', backgroundColor: '#FAF7F4' }}
+                title="Coming soon"
+              >
+                <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="#2F2F33">
+                  <path d="M3.18 23.76c.3.17.64.24.99.2l12.49-7.19-2.7-2.7-10.78 9.69zm16.21-9.33L16.22 12l3.17-2.43L5.8.22C5.47.05 5.1-.02 4.75.01L15.54 10.8l3.85 3.63zm2.04-5.51c-.42-.25-.9-.25-1.32 0L17.84 11l-2.31-2.31L16.78 8l-1.25-1.24L3.18.24C2.9.07 2.55.02 2.24.18 1.5.58 1.5 1.66 1.5 1.66v20.68s0 1.08.74 1.48c.31.17.67.21 1 .06l13.16-7.63-1.25-1.24 1.25-.95 2.26 2.26 2.27-1.31c.42-.25.57-.78.32-1.2z"/>
+                </svg>
+                <div>
+                  <div className="text-[9px] font-medium uppercase tracking-wide" style={{ color: '#6D6A70' }}>Coming soon on</div>
+                  <div className="text-sm font-semibold leading-tight" style={{ color: '#2F2F33' }}>Google Play</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phone mockup */}
+          <div className="flex justify-center items-center">
+            <div className="relative">
+              {/* Glow */}
+              <div className="absolute inset-0 rounded-[40px] blur-3xl opacity-20 scale-90" style={{ backgroundColor: '#C97B84' }} />
+
+              {/* Phone shell */}
+              <div
+                className="relative w-52 rounded-[36px] border-[6px] shadow-2xl overflow-hidden"
+                style={{ borderColor: '#2F2F33', backgroundColor: '#2F2F33', aspectRatio: '9/19' }}
+              >
+                {/* Notch */}
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-16 h-4 rounded-full z-10" style={{ backgroundColor: '#2F2F33' }} />
+
+                {/* Screen */}
+                <div className="w-full h-full rounded-[30px] overflow-hidden" style={{ backgroundColor: '#FCF9F6' }}>
+                  {/* Status bar */}
+                  <div className="px-5 pt-7 pb-2 flex items-center justify-between">
+                    <span className="text-[8px] font-semibold" style={{ color: '#2F2F33' }}>9:41</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-1.5 rounded-sm border" style={{ borderColor: '#2F2F33' }}>
+                        <div className="w-2/3 h-full rounded-sm" style={{ backgroundColor: '#6D9E7F' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* App header */}
+                  <div className="px-4 pt-1 pb-3 flex items-center gap-2 border-b" style={{ borderColor: '#E8DDD3' }}>
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#C97B84' }} />
+                    <span className="text-[10px] font-semibold" style={{ color: '#2F2F33', fontFamily: 'serif' }}>Passion Planner</span>
+                  </div>
+
+                  {/* Skeleton content */}
+                  <div className="px-4 py-3 space-y-3">
+                    {/* Welcome */}
+                    <div className="h-2.5 rounded-full w-3/4" style={{ backgroundColor: '#E8DDD3' }} />
+                    <div className="h-2 rounded-full w-1/2" style={{ backgroundColor: '#F0E8E0' }} />
+
+                    {/* Stat cards */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {['#FDF0F1','#F0EFF8','#EFF5EE','#FDF0F1'].map((bg, i) => (
+                        <div key={i} className="rounded-xl p-2.5" style={{ backgroundColor: bg }}>
+                          <div className="h-1.5 rounded-full w-2/3 mb-1.5" style={{ backgroundColor: '#E8DDD3' }} />
+                          <div className="h-3 rounded-full w-1/2" style={{ backgroundColor: '#C97B84', opacity: 0.3 + i * 0.1 }} />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* List items */}
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-2 rounded-xl p-2" style={{ backgroundColor: '#F7F3EF' }}>
+                        <div className="w-6 h-6 rounded-lg flex-shrink-0" style={{ backgroundColor: '#E8C5CA' }} />
+                        <div className="flex-1 space-y-1">
+                          <div className="h-1.5 rounded-full" style={{ backgroundColor: '#E8DDD3', width: `${60 + i * 15}%` }} />
+                          <div className="h-1 rounded-full w-2/5" style={{ backgroundColor: '#F0E8E0' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Coming soon badge on phone */}
+              <div
+                className="absolute -top-3 -right-4 px-3 py-1.5 rounded-full text-[10px] font-bold shadow-md border"
+                style={{ backgroundColor: '#C97B84', color: 'white', borderColor: '#B66A74' }}
+              >
+                Coming Soon
+              </div>
             </div>
           </div>
         </div>
