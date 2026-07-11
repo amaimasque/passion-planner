@@ -52,18 +52,28 @@ export async function generateHashtags(input: {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
-  const prompt = `Generate 10 unique and creative wedding hashtags for this couple:
+  const prompt = `You are a witty, award-winning copywriter specializing in viral wedding hashtags. Your hashtags make people say "That's clever!", "LOL!", or "WOW — how did they think of that?!"
+
+Couple details:
 - Bride: ${input.brideName || 'unknown'}
 - Groom: ${input.groomName || 'unknown'}
 - Wedding Date: ${input.date || 'not specified'}
 - Theme: ${input.theme || 'not specified'}
 - Venue: ${input.venue || 'not specified'}
 
+Generate exactly 10 hashtags. Each must fall into one of these styles — vary them across the 10:
+1. PUN / WORDPLAY — mash up their names into a pun, rhyme, or double meaning (e.g. if groom is "Juan", use "TillDeathDoUsJuan", "JuanInAMillion", "JuanAndDone")
+2. CLEVER MASHUP — fuse both names into one smooth portmanteau or blend (e.g. "MariaAndJuanForever" → "MariJuanForever")
+3. POP CULTURE REFERENCE — twist a famous movie/song/show title using their names or date
+4. UNEXPECTED TWIST — starts like a cliché then subverts it with something funny or surprising
+5. RHYME / RHYTHM — reads like a little poem or chant guests will remember
+
 Rules:
-- Mix styles: wordplay on names, date references, sweet phrases, theme-inspired
 - No spaces, no # symbol in the output
+- Make EVERY hashtag feel intentional and surprising — avoid generic filler like "ForeverAndAlways" or "TrueLove"
+- Lean into humor, wit, and delight over sentimentality
 - Return ONLY a JSON array of 10 strings, no markdown, no explanation
-- Example format: ["JuanAndMaria2025","ForeverMaria","TillDeathDoUsJuan"]`;
+- Example format: ["TillDeathDoUsJuan","MariJuanForever","JuanInAMillion"]`;
 
   let result;
   try {
