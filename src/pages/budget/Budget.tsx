@@ -100,18 +100,22 @@ export default function Budget() {
   async function submitCategory() {
     if (!catForm.name.trim()) return;
     if (modal?.type === 'addCategory') {
+      const note = catForm.note.trim();
       const newCat: BudgetCategory = {
         id: crypto.randomUUID(),
         name: catForm.name.trim(),
-        note: catForm.note.trim() || undefined,
         items: [],
+        ...(note ? { note } : {}),
       };
       await doSave([...categories, newCat]);
     } else if (modal?.type === 'editCategory') {
-      const id = modal.category.id;
-      await doSave(categories.map(c =>
-        c.id === id ? { ...c, name: catForm.name.trim(), note: catForm.note.trim() || undefined } : c
-      ));
+      const id   = modal.category.id;
+      const note = catForm.note.trim();
+      await doSave(categories.map(c => {
+        if (c.id !== id) return c;
+        const { note: _removed, ...rest } = c;
+        return note ? { ...rest, note } : rest;
+      }));
     }
     setModal(null);
   }
