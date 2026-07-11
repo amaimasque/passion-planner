@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, Sparkles, AlertTriangle, GripVertical, Wand2, Check, Settings, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Sparkles, AlertTriangle, GripVertical, Check, Settings, ChevronDown, ChevronRight, Wand2 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
@@ -10,6 +10,7 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import { useWeddingDetails } from '../../hooks/useWeddingDetails';
 import { estimateBudgetWithAI } from '../../services/geminiEstimator';
 import type { AiEstimateResult, AiCategoryEstimate } from '../../services/geminiEstimator';
+import AiCooldownButton, { useAiCooldown } from '../../components/ui/AiCooldownButton';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -60,6 +61,7 @@ export default function Budget() {
   const [aiSelected, setAiSelected] = useState<Set<string>>(new Set());
   const [aiExpanded, setAiExpanded] = useState<Set<string>>(new Set());
   const [aiApplying, setAiApplying] = useState(false);
+  const { cooldown: aiCooldown, stamp: stampAi } = useAiCooldown('budget');
 
   // ── Drag-to-reorder ────────────────────────────────────────────────────────
   const dragIndex = useRef<number | null>(null);
@@ -187,6 +189,14 @@ export default function Budget() {
     setModal(null);
   }
 
+  async function quickEditItem(categoryId: string, item: BudgetItem, field: 'estimated' | 'actual', value: number) {
+    await doSave(categories.map(c =>
+      c.id === categoryId
+        ? { ...c, items: c.items.map(i => i.id === item.id ? { ...i, [field]: value } : i) }
+        : c
+    ));
+  }
+
   // ── AI Estimate ───────────────────────────────────────────────────────────
 
   async function openAiEstimate() {
@@ -212,8 +222,8 @@ export default function Budget() {
         existingCategories: categories,
       });
       setAiResult(result);
-      // Pre-select all suggested categories
       setAiSelected(new Set(result.categories.map(c => c.name)));
+      stampAi();
     } catch (err: any) {
       setAiError(err.message ?? 'Something went wrong. Please try again.');
     } finally {
@@ -283,13 +293,12 @@ export default function Budget() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <AiCooldownButton
+              cooldown={aiCooldown}
+              label="AI Estimate"
+              isLoading={aiLoading}
               onClick={openAiEstimate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-brand-primary bg-brand-primary/8 hover:bg-brand-primary/15 transition-all duration-200"
-            >
-              <Wand2 className="w-3.5 h-3.5" />
-              AI Estimate
-            </button>
+            />
             <Button onClick={openAddCategory} size="sm">
               <Plus className="w-3.5 h-3.5" />
               Add Category
@@ -423,6 +432,7 @@ export default function Budget() {
                 onAddItem={() => openAddItem(cat.id)}
                 onEditItem={(item) => openEditItem(cat.id, item)}
                 onDeleteItem={(item) => setModal({ type: 'confirmDeleteItem', categoryId: cat.id, item })}
+                onQuickEdit={(item, field, value) => quickEditItem(cat.id, item, field, value)}
               />
             ))}
           </div>
@@ -743,7 +753,7 @@ function SummaryCard({
 function CategoryCard({
   category, isDragging, isOver,
   onDragStart, onDragOver, onDrop, onDragEnd,
-  onEdit, onDelete, onAddItem, onEditItem, onDeleteItem,
+  onEdit, onDelete, onAddItem, onEditItem, onDeleteItem, onQuickEdit,
 }: {
   category: BudgetCategory;
   isDragging: boolean;
@@ -757,10 +767,30 @@ function CategoryCard({
   onAddItem: () => void;
   onEditItem: (item: BudgetItem) => void;
   onDeleteItem: (item: BudgetItem) => void;
+  onQuickEdit: (item: BudgetItem, field: 'estimated' | 'actual', value: number) => void;
 }) {
   const { fmt, fmtOu } = useCurrency();
   const totals = categoryTotals(category);
   const ou = fmtOu(totals.overUnder);
+
+  type EditCell = { itemId: string; field: 'estimated' | 'actual'; value: string };
+  const [editCell, setEditCell] = useState<EditCell | null>(null);
+
+  function startEdit(item: BudgetItem, field: 'estimated' | 'actual') {
+    setEditCell({ itemId: item.id, field, value: String(item[field] || '') });
+  }
+
+  function commitEdit() {
+    if (!editCell) return;
+    const item = category.items.find(i => i.id === editCell.itemId);
+    if (item) onQuickEdit(item, editCell.field, parseFloat(editCell.value) || 0);
+    setEditCell(null);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+    if (e.key === 'Escape') setEditCell(null);
+  }
 
   return (
     <div
@@ -824,8 +854,40 @@ function CategoryCard({
                   return (
                     <tr key={item.id} className="group">
                       <td className="py-2 text-ink pr-2">{item.name}</td>
-                      <td className="py-2 text-right text-ink-muted tabular-nums text-xs">{fmt(item.estimated)}</td>
-                      <td className="py-2 text-right text-ink-muted tabular-nums text-xs">{fmt(item.actual)}</td>
+
+                      {/* Est. — double-click to edit inline */}
+                      {(['estimated', 'actual'] as const).map(field => {
+                        const isEditing = editCell?.itemId === item.id && editCell.field === field;
+                        return (
+                          <td
+                            key={field}
+                            className="py-1.5 text-right tabular-nums text-xs cursor-default"
+                            onDoubleClick={e => { e.stopPropagation(); startEdit(item, field); }}
+                            title="Double-click to edit"
+                          >
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                autoFocus
+                                value={editCell.value}
+                                onChange={e => setEditCell({ ...editCell, value: e.target.value })}
+                                onBlur={commitEdit}
+                                onKeyDown={handleKeyDown}
+                                onFocus={e => e.target.select()}
+                                onMouseDown={e => e.stopPropagation()}
+                                className="w-24 text-right text-xs bg-app-bg border border-brand-primary/50 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-primary/25 text-ink tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            ) : (
+                              <span className={`text-ink-muted hover:text-ink hover:bg-brand-primary/5 rounded px-1 py-0.5 transition-colors ${field === 'estimated' ? '' : ''}`}>
+                                {fmt(item[field])}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+
                       <td className={`py-2 text-right tabular-nums text-xs font-medium ${iou.cls}`}>{iou.text}</td>
                       <td className="py-2 pl-2">
                         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { to: '/seating',      icon: LayoutGrid,       label: 'Seating' },
   { to: '/checklist',    icon: ClipboardList,    label: 'Checklist' },
   { to: '/media',        icon: Image,            label: 'Media & Branding' },
-  { to: '/program-flow', icon: Presentation, label: 'Program Flow', soon: true, desc: 'Manage text scripts for your event program. Link multiple program flows — entrance, ceremonies, speeches, and more — directly to your Passion Planner.' },
+  { to: '/program-flow', icon: Presentation, label: 'Program Flow' },
   { to: '/mobile-app',   icon: Smartphone,   label: 'Mobile App',   soon: true, desc: 'Passion Planner for iOS & Android — plan on the go, get deadline notifications, and sync with your partner in real time.' },
 ];
 

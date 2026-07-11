@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Heart, Plus, X, Check, ChevronDown, Search } from 'lucide-react';
 import { useWeddingDetails } from '../../hooks/useWeddingDetails';
 import { useGuests } from '../../hooks/useGuests';
+import { generateHashtags } from '../../services/geminiEstimator';
+import AiCooldownButton, { useAiCooldown } from '../../components/ui/AiCooldownButton';
 import type { WeddingDetails as IWeddingDetails, BrideGroomInfo } from '../../types/weddingDetails';
 import type { MotifColor } from '../../types/weddingDetails';
 import type { Guest } from '../../types/guest';
@@ -476,6 +478,12 @@ export default function WeddingDetails() {
   const [saved, setSaved]  = useState(false);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // AI hashtag state
+  const [hashtagLoading, setHashtagLoading] = useState(false);
+  const [hashtagError, setHashtagError]     = useState('');
+  const [hashtagSuggestions, setHashtagSuggestions] = useState<string[]>([]);
+  const { cooldown, stamp: stampHashtag } = useAiCooldown('hashtag');
+
   // Initialize form once loaded; seed guestCount from guest list if not yet set
   useEffect(() => {
     if (!loading && form === null) {
@@ -539,6 +547,28 @@ export default function WeddingDetails() {
         setTimeout(() => setSaved(false), 2000);
       }
     }, 800);
+  }
+
+  async function handleGenerateHashtags() {
+    if (!form || cooldown > 0 || hashtagLoading) return;
+    setHashtagError('');
+    setHashtagSuggestions([]);
+    setHashtagLoading(true);
+    try {
+      const tags = await generateHashtags({
+        brideName: composeName(form.bride),
+        groomName: composeName(form.groom),
+        date: form.date,
+        theme: form.theme,
+        venue: form.receptionVenue,
+      });
+      setHashtagSuggestions(tags);
+      stampHashtag();
+    } catch (err: any) {
+      setHashtagError(err.message ?? 'Something went wrong.');
+    } finally {
+      setHashtagLoading(false);
+    }
   }
 
   const officiant      = guests.find(g => g.id === form.officiantGuestId);
@@ -749,15 +779,55 @@ export default function WeddingDetails() {
 
             {/* Event Hashtag */}
             <Row label="Event Hashtag">
-              <div className="flex items-center gap-1 w-full">
-                <span className="text-ink-muted text-sm">#</span>
-                <input
-                  type="text"
-                  value={form.eventHashtag.replace(/^#/, '')}
-                  onChange={e => update('eventHashtag', e.target.value.replace(/^#/, ''))}
-                  placeholder="YourWeddingHashtag"
-                  className="flex-1 text-sm text-ink bg-transparent focus:outline-none placeholder:text-app-border"
-                />
+              <div className="flex flex-col gap-2 w-full py-1">
+                {/* Input row */}
+                <div className="flex items-center gap-2 w-full">
+                  <span className="text-ink-muted text-sm">#</span>
+                  <input
+                    type="text"
+                    value={form.eventHashtag.replace(/^#/, '')}
+                    onChange={e => update('eventHashtag', e.target.value.replace(/^#/, ''))}
+                    placeholder="YourWeddingHashtag"
+                    className="flex-1 text-sm text-ink bg-transparent focus:outline-none placeholder:text-app-border"
+                  />
+                  <AiCooldownButton
+                    cooldown={cooldown}
+                    label="AI Ideas"
+                    isLoading={hashtagLoading}
+                    onClick={handleGenerateHashtags}
+                  />
+                </div>
+
+                {/* Error */}
+                {hashtagError && (
+                  <p className="text-xs text-danger">{hashtagError}</p>
+                )}
+
+                {/* Suggestions */}
+                {hashtagSuggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {hashtagSuggestions.map(tag => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          update('eventHashtag', tag);
+                          setHashtagSuggestions([]);
+                        }}
+                        className="px-2.5 py-1 text-xs rounded-full border border-brand-primary/30 text-brand-primary hover:bg-brand-primary hover:text-white transition-all duration-150"
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setHashtagSuggestions([])}
+                      className="px-2.5 py-1 text-xs rounded-full border border-app-border text-ink-muted hover:border-danger hover:text-danger transition-all duration-150"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
               </div>
             </Row>
 

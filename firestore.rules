@@ -47,6 +47,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Each user can only read and write their own program flow document
+    match /program-flows/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // RSVP tokens are publicly readable (guests access via link, no auth)
     // Writes allowed from authenticated users (couple creating invite links)
     match /rsvpTokens/{token} {
