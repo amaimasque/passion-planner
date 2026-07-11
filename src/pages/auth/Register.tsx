@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { doc, setDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
@@ -28,8 +28,15 @@ const FEATURES = [
 ];
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, currentUser } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate(currentUser.emailVerified ? '/dashboard' : '/verify-email', { replace: true });
+    }
+  }, [currentUser, navigate]);
+
   const [form, setForm] = useState<RegisterForm>({ name: '', email: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

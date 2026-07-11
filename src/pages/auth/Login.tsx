@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, Sparkles, Check } from 'lucide-react';
@@ -19,8 +19,15 @@ const FEATURES = [
 ];
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, currentUser } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate(currentUser.emailVerified ? '/dashboard' : '/verify-email', { replace: true });
+    }
+  }, [currentUser, navigate]);
+
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

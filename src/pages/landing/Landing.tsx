@@ -1,5 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Heart,
   Users,
@@ -29,6 +30,15 @@ const PLAN_PHOTO   = 'https://images.pexels.com/photos/3171837/pexels-photo-3171
 const COUPLE_PHOTO = 'https://images.pexels.com/photos/1128784/pexels-photo-1128784.jpeg?auto=compress&cs=tinysrgb&w=800&h=560&dpr=1';
 
 export default function Landing() {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate(currentUser.emailVerified ? '/dashboard' : '/verify-email', { replace: true });
+    }
+  }, [currentUser, navigate]);
+
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: '#FCF9F6', color: '#2F2F33' }}>
 
