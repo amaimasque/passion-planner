@@ -1,11 +1,15 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, Sparkles, AlertTriangle, GripVertical } from 'lucide-react';
+import { Plus, Pencil, Trash2, Sparkles, AlertTriangle, GripVertical, Wand2, Check, Settings, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts';
 import { useBudget } from '../../hooks/useBudget';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { useWeddingDetails } from '../../hooks/useWeddingDetails';
+import { estimateBudgetWithAI } from '../../services/geminiEstimator';
+import type { AiEstimateResult, AiCategoryEstimate } from '../../services/geminiEstimator';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -33,6 +37,7 @@ type ModalState =
   | { type: 'editItem'; categoryId: string; item: BudgetItem }
   | { type: 'confirmDeleteCategory'; category: BudgetCategory }
   | { type: 'confirmDeleteItem'; categoryId: string; item: BudgetItem }
+  | { type: 'aiEstimate' }
   | null;
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -40,11 +45,21 @@ type ModalState =
 export default function Budget() {
   const { categories, loading, save } = useBudget();
   const { fmt, fmtOu, currency } = useCurrency();
+  const { profile } = useUserProfile();
+  const { details: weddingDetails } = useWeddingDetails();
 
   const [modal, setModal]       = useState<ModalState>(null);
   const [catForm, setCatForm]   = useState({ name: '', note: '' });
   const [itemForm, setItemForm] = useState({ name: '', estimated: '', actual: '' });
   const [saving, setSaving]     = useState(false);
+
+  // AI Estimate state
+  const [aiLoading, setAiLoading]   = useState(false);
+  const [aiError, setAiError]       = useState('');
+  const [aiResult, setAiResult]     = useState<AiEstimateResult | null>(null);
+  const [aiSelected, setAiSelected] = useState<Set<string>>(new Set());
+  const [aiExpanded, setAiExpanded] = useState<Set<string>>(new Set());
+  const [aiApplying, setAiApplying] = useState(false);
 
   // ── Drag-to-reorder ────────────────────────────────────────────────────────
   const dragIndex = useRef<number | null>(null);
@@ -172,6 +187,78 @@ export default function Budget() {
     setModal(null);
   }
 
+  // ── AI Estimate ───────────────────────────────────────────────────────────
+
+  async function openAiEstimate() {
+    setAiResult(null);
+    setAiError('');
+    setAiSelected(new Set());
+    setAiExpanded(new Set());
+    setModal({ type: 'aiEstimate' });
+
+    if (!profile.location) return; // modal will show the "set location" prompt
+
+    setAiLoading(true);
+    try {
+      const result = await estimateBudgetWithAI({
+        location: profile.location,
+        currencyCode: currency.code,
+        weddingDate: weddingDetails.date,
+        guestCount: weddingDetails.guestCount,
+        receptionVenue: weddingDetails.receptionVenue,
+        foodServiceType: weddingDetails.foodServiceType,
+        theme: weddingDetails.theme,
+        attire: weddingDetails.attire,
+        existingCategories: categories,
+      });
+      setAiResult(result);
+      // Pre-select all suggested categories
+      setAiSelected(new Set(result.categories.map(c => c.name)));
+    } catch (err: any) {
+      setAiError(err.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function toggleAiCategory(name: string) {
+    setAiSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  }
+
+  function toggleAiExpand(name: string) {
+    setAiExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  }
+
+  async function applyAiEstimate() {
+    if (!aiResult) return;
+    setAiApplying(true);
+    try {
+      const toAdd = aiResult.categories.filter(c => aiSelected.has(c.name));
+      const newCategories: BudgetCategory[] = toAdd.map(c => ({
+        id: crypto.randomUUID(),
+        name: c.name,
+        items: c.items.map(item => ({
+          id: crypto.randomUUID(),
+          name: item.name,
+          estimated: item.estimated,
+          actual: 0,
+        })),
+      }));
+      await doSave([...categories, ...newCategories]);
+      setModal(null);
+    } finally {
+      setAiApplying(false);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -195,10 +282,19 @@ export default function Budget() {
               Budget Tracker
             </span>
           </div>
-          <Button onClick={openAddCategory} size="sm">
-            <Plus className="w-3.5 h-3.5" />
-            Add Category
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openAiEstimate}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-brand-primary bg-brand-primary/8 hover:bg-brand-primary/15 transition-all duration-200"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              AI Estimate
+            </button>
+            <Button onClick={openAddCategory} size="sm">
+              <Plus className="w-3.5 h-3.5" />
+              Add Category
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -482,6 +578,146 @@ export default function Budget() {
               </Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* AI Budget Estimate */}
+      {modal?.type === 'aiEstimate' && (
+        <Modal title="AI Budget Estimator" onClose={() => setModal(null)} size="lg">
+          {/* Gate: location not set */}
+          {!profile.location ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-caution/8 border border-caution/25 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-caution flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-ink">Location required</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    The AI estimator uses your country to generate realistic local price ranges.
+                    Please set your location in Account Settings first.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="ghost" fullWidth onClick={() => setModal(null)}>Cancel</Button>
+                <Button
+                  fullWidth
+                  onClick={() => { setModal(null); window.location.href = '/settings'; }}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Go to Settings
+                </Button>
+              </div>
+            </div>
+          ) : aiLoading ? (
+            /* Loading state */
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-10 h-10 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-ink">Generating your estimate…</p>
+                <p className="text-xs text-ink-muted mt-1">Asking Gemini AI for {profile.location} pricing</p>
+              </div>
+            </div>
+          ) : aiError ? (
+            /* Error state */
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-danger/8 border border-danger/20 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-ink">{aiError}</p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="ghost" fullWidth onClick={() => setModal(null)}>Cancel</Button>
+                <Button fullWidth onClick={openAiEstimate}>Try Again</Button>
+              </div>
+            </div>
+          ) : aiResult ? (
+            /* Results */
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="p-3.5 bg-brand-primary/5 border border-brand-primary/15 rounded-xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <Wand2 className="w-3.5 h-3.5 text-brand-primary flex-shrink-0" />
+                  <span className="text-xs font-semibold text-brand-primary uppercase tracking-wide">AI Summary</span>
+                </div>
+                <p className="text-sm text-ink-muted leading-relaxed">{aiResult.summary}</p>
+              </div>
+
+              {/* Category list */}
+              <p className="text-xs text-ink-muted">
+                Select the categories you want to add. Uncheck any you already have or don't need.
+              </p>
+              <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                {aiResult.categories.map((cat: AiCategoryEstimate) => {
+                  const selected  = aiSelected.has(cat.name);
+                  const expanded  = aiExpanded.has(cat.name);
+                  const catTotal  = cat.items.reduce((s, i) => s + i.estimated, 0);
+                  return (
+                    <div
+                      key={cat.name}
+                      className={[
+                        'border rounded-xl transition-all',
+                        selected ? 'border-brand-primary/30 bg-brand-primary/3' : 'border-app-border bg-app-bg',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <button
+                          onClick={() => toggleAiCategory(cat.name)}
+                          className={[
+                            'w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-all',
+                            selected
+                              ? 'bg-brand-primary border-brand-primary'
+                              : 'border-app-border bg-app-surface hover:border-brand-primary/50',
+                          ].join(' ')}
+                        >
+                          {selected && <Check className="w-2.5 h-2.5 text-white" />}
+                        </button>
+                        <span className={`flex-1 text-sm font-medium ${selected ? 'text-ink' : 'text-ink-muted'}`}>
+                          {cat.name}
+                        </span>
+                        <span className="text-sm font-semibold text-ink tabular-nums">{fmt(catTotal)}</span>
+                        <button
+                          onClick={() => toggleAiExpand(cat.name)}
+                          className="p-0.5 text-ink-muted hover:text-ink transition-colors"
+                        >
+                          {expanded
+                            ? <ChevronDown className="w-3.5 h-3.5" />
+                            : <ChevronRight className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                      {expanded && (
+                        <div className="px-4 pb-3 border-t border-app-border/60">
+                          <div className="pt-2 space-y-1">
+                            {cat.items.map(item => (
+                              <div key={item.name} className="flex items-center justify-between text-xs text-ink-muted">
+                                <span>{item.name}</span>
+                                <span className="tabular-nums">{fmt(item.estimated)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-[10px] text-ink-muted/70 leading-relaxed">
+                These are AI-generated estimates for reference only. Actual costs vary — always get quotes from local vendors.
+              </p>
+
+              <div className="flex gap-3 pt-1">
+                <Button variant="ghost" fullWidth onClick={() => setModal(null)}>Cancel</Button>
+                <Button
+                  fullWidth
+                  isLoading={aiApplying}
+                  onClick={applyAiEstimate}
+                  disabled={aiSelected.size === 0}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Add {aiSelected.size} Categor{aiSelected.size === 1 ? 'y' : 'ies'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </Modal>
       )}
     </div>
