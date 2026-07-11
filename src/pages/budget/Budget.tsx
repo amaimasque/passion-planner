@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import { Plus, Pencil, Trash2, Sparkles, AlertTriangle, GripVertical } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
+} from 'recharts';
 import { useBudget } from '../../hooks/useBudget';
 import { useCurrency } from '../../hooks/useCurrency';
 import Modal from '../../components/ui/Modal';
@@ -208,13 +211,18 @@ export default function Budget() {
           />
         </div>
 
-        {/* ── Category summary table + pie chart ── */}
+        {/* ── Charts ── */}
         {categories.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
-            {/* Summary table */}
-            <div className="bg-app-surface border border-app-border rounded-2xl overflow-hidden">
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+              <BudgetDonutChart categories={categories} grandAct={grandAct} />
+              <BudgetBarChart   categories={categories} />
+            </div>
+
+            {/* Summary table — full width */}
+            <div className="bg-app-surface border border-app-border rounded-2xl overflow-hidden mb-8">
               <div className="px-5 py-4 border-b border-app-border">
-                <h2 className="font-serif text-base font-semibold text-ink">Summary</h2>
+                <h2 className="font-serif text-base font-semibold text-ink">Summary by Category</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -223,38 +231,76 @@ export default function Budget() {
                       <th className="text-left px-5 py-3 font-medium">Category</th>
                       <th className="text-right px-5 py-3 font-medium">Estimated</th>
                       <th className="text-right px-5 py-3 font-medium">Actual</th>
+                      <th className="px-5 py-3 font-medium w-40">Progress</th>
                       <th className="text-right px-5 py-3 font-medium">Over / Under</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-app-border">
-                    {categories.map(cat => {
-                      const t  = categoryTotals(cat);
-                      const ou = fmtOu(t.overUnder);
+                    {categories.map((cat, i) => {
+                      const t   = categoryTotals(cat);
+                      const ou  = fmtOu(t.overUnder);
+                      const pct = t.estimated > 0 ? (t.actual / t.estimated) * 100 : 0;
+                      const over = t.actual > t.estimated && t.estimated > 0;
+                      const barColor = over ? '#C8645B' : pct >= 80 ? '#D9A441' : '#6D9E7F';
+                      const dotColor = CHART_COLORS[i % CHART_COLORS.length];
                       return (
                         <tr key={cat.id} className="hover:bg-app-bg/50 transition-colors">
-                          <td className="px-5 py-2.5 text-ink">{cat.name}</td>
-                          <td className="px-5 py-2.5 text-right text-ink-muted">{fmt(t.estimated)}</td>
-                          <td className="px-5 py-2.5 text-right text-ink-muted">{fmt(t.actual)}</td>
-                          <td className={`px-5 py-2.5 text-right font-medium ${ou.cls}`}>{ou.text}</td>
+                          <td className="px-5 py-3 text-ink">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
+                              {cat.name}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-right text-ink-muted tabular-nums">{fmt(t.estimated)}</td>
+                          <td className="px-5 py-3 text-right text-ink-muted tabular-nums">{fmt(t.actual)}</td>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 rounded-full bg-app-border overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: barColor }}
+                                />
+                              </div>
+                              <span className="text-[10px] tabular-nums text-ink-muted w-8 text-right flex-shrink-0">
+                                {t.estimated > 0 ? `${Math.round(pct)}%` : '—'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className={`px-5 py-3 text-right font-medium tabular-nums ${ou.cls}`}>{ou.text}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-app-border bg-brand-primary/5">
-                      <td className="px-5 py-3 text-sm font-semibold text-ink">Total Expenses</td>
-                      <td className="px-5 py-3 text-right text-sm font-semibold text-ink">{fmt(grandEst)}</td>
-                      <td className="px-5 py-3 text-right text-sm font-semibold text-ink">{fmt(grandAct)}</td>
-                      <td className={`px-5 py-3 text-right text-sm font-semibold ${ouGrand.cls}`}>{ouGrand.text}</td>
+                      <td className="px-5 py-3 text-sm font-semibold text-ink">Total</td>
+                      <td className="px-5 py-3 text-right text-sm font-semibold text-ink tabular-nums">{fmt(grandEst)}</td>
+                      <td className="px-5 py-3 text-right text-sm font-semibold text-ink tabular-nums">{fmt(grandAct)}</td>
+                      <td className="px-5 py-3">
+                        {grandEst > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-app-border overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${Math.min((grandAct / grandEst) * 100, 100)}%`,
+                                  backgroundColor: grandAct > grandEst ? '#C8645B' : '#C97B84',
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] tabular-nums text-ink-muted w-8 text-right flex-shrink-0">
+                              {Math.round((grandAct / grandEst) * 100)}%
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className={`px-5 py-3 text-right text-sm font-semibold tabular-nums ${ouGrand.cls}`}>{ouGrand.text}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
             </div>
-
-            {/* Pie chart */}
-            <BudgetPieChart categories={categories} />
-          </div>
+          </>
         )}
 
         {/* ── Category cards ── */}
@@ -588,8 +634,10 @@ function CategoryCard({
   );
 }
 
-function BudgetPieChart({ categories }: { categories: BudgetCategory[] }) {
+function BudgetDonutChart({ categories, grandAct }: { categories: BudgetCategory[]; grandAct: number }) {
   const { fmt } = useCurrency();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   const data = categories
     .map((cat, i) => ({
       name: cat.name,
@@ -599,11 +647,13 @@ function BudgetPieChart({ categories }: { categories: BudgetCategory[] }) {
     .filter(d => d.value > 0);
 
   const total = data.reduce((s, d) => s + d.value, 0);
+  const activeEntry = activeIndex !== null ? data[activeIndex] : null;
 
   return (
     <div className="bg-app-surface border border-app-border rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-app-border">
-        <h2 className="font-serif text-base font-semibold text-ink">Actual Spending</h2>
+        <h2 className="font-serif text-base font-semibold text-ink">Spending by Category</h2>
+        <p className="text-xs text-ink-muted mt-0.5">Actual amounts spent per category</p>
       </div>
       {data.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 px-5 text-center">
@@ -612,55 +662,152 @@ function BudgetPieChart({ categories }: { categories: BudgetCategory[] }) {
         </div>
       ) : (
         <div className="px-5 py-5">
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={210}>
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
+                innerRadius={62}
                 outerRadius={90}
                 paddingAngle={2}
                 dataKey="value"
+                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+                strokeWidth={0}
               >
                 {data.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} stroke="transparent" />
+                  <Cell
+                    key={i}
+                    fill={entry.color}
+                    opacity={activeIndex === null || activeIndex === i ? 1 : 0.4}
+                    style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
+                  />
                 ))}
+                <Label
+                  content={({ viewBox }) => {
+                    const { cx, cy } = viewBox as { cx: number; cy: number };
+                    const display = activeEntry ?? { name: 'Total Spent', value: grandAct };
+                    const pct = activeEntry && total > 0
+                      ? `${((activeEntry.value / total) * 100).toFixed(1)}%`
+                      : null;
+                    return (
+                      <g>
+                        <text x={cx} y={cy - (pct ? 10 : 6)} textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="#6D6A70">
+                          {activeEntry ? activeEntry.name.length > 12 ? activeEntry.name.slice(0, 12) + '…' : activeEntry.name : 'Total Spent'}
+                        </text>
+                        <text x={cx} y={cy + (pct ? 8 : 10)} textAnchor="middle" dominantBaseline="middle" fontSize={15} fontWeight={700} fill="#2F2F33">
+                          {fmt(display.value)}
+                        </text>
+                        {pct && (
+                          <text x={cx} y={cy + 26} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#6D6A70">
+                            {pct} of total
+                          </text>
+                        )}
+                      </g>
+                    );
+                  }}
+                />
               </Pie>
               <Tooltip
                 formatter={(value) => [fmt(Number(value)), 'Actual']}
                 contentStyle={{
-                  background: '#fff',
+                  background: 'var(--color-app-surface, #fff)',
                   border: '1px solid #E8DDD3',
                   borderRadius: '12px',
                   fontSize: '12px',
                   color: '#2F2F33',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                 }}
               />
             </PieChart>
           </ResponsiveContainer>
 
           {/* Legend */}
-          <ul className="mt-3 space-y-2">
-            {data.map((entry) => {
+          <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1.5">
+            {data.map((entry, i) => {
               const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
               return (
-                <li key={entry.name} className="flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: entry.color }}
-                    />
-                    <span className="text-ink truncate">{entry.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 tabular-nums">
-                    <span className="text-ink-muted">{pct}%</span>
-                    <span className="font-medium text-ink">{fmt(entry.value)}</span>
-                  </div>
+                <li
+                  key={entry.name}
+                  className="flex items-center gap-2 text-xs cursor-default"
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                  <span className="text-ink truncate flex-1">{entry.name}</span>
+                  <span className="text-ink-muted tabular-nums flex-shrink-0">{pct}%</span>
                 </li>
               );
             })}
           </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BudgetBarChart({ categories }: { categories: BudgetCategory[] }) {
+  const { fmt } = useCurrency();
+
+  const data = categories.map((cat, i) => ({
+    name: cat.name.length > 14 ? cat.name.slice(0, 13) + '…' : cat.name,
+    Estimated: categoryTotals(cat).estimated,
+    Actual: categoryTotals(cat).actual,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const hasData = data.some(d => d.Estimated > 0 || d.Actual > 0);
+
+  return (
+    <div className="bg-app-surface border border-app-border rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-app-border">
+        <h2 className="font-serif text-base font-semibold text-ink">Estimated vs Actual</h2>
+        <p className="text-xs text-ink-muted mt-0.5">Budget allocation compared to real spending</p>
+      </div>
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center py-12 px-5 text-center">
+          <p className="text-sm text-ink-muted">Add estimated or actual amounts to see the comparison.</p>
+        </div>
+      ) : (
+        <div className="px-4 py-5">
+          <ResponsiveContainer width="100%" height={248}>
+            <BarChart data={data} barCategoryGap="30%" barGap={3}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8DDD3" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: '#6D6A70' }}
+                axisLine={false}
+                tickLine={false}
+                interval={0}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#6D6A70' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={n => fmt(n)}
+                width={72}
+              />
+              <Tooltip
+                formatter={(value, name) => [fmt(Number(value)), name]}
+                contentStyle={{
+                  background: 'var(--color-app-surface, #fff)',
+                  border: '1px solid #E8DDD3',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  color: '#2F2F33',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                }}
+                cursor={{ fill: 'rgba(201,123,132,0.05)' }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                formatter={(value) => <span style={{ color: '#6D6A70' }}>{value}</span>}
+              />
+              <Bar dataKey="Estimated" fill="#C97B84" fillOpacity={0.25} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Actual"    fill="#C97B84" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
