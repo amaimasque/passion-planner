@@ -5,6 +5,9 @@ import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, db } from '../../firebase';
 import { buildDefaultBudget } from '../../data/defaultBudget';
+import { buildDefaultProcessional } from '../../data/defaultProcessional';
+import { buildPrefillTables } from '../../types/seating';
+import { buildPrefillItems } from '../../types/checklist';
 import { Mail, Lock, User, Sparkles, Check } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -43,7 +46,12 @@ export default function Register() {
       setError('');
       setLoading(true);
       const uid = await register(form.email, form.password, form.name);
-      await setDoc(doc(db, 'budgets', uid), { categories: buildDefaultBudget() });
+      await Promise.all([
+        setDoc(doc(db, 'budgets',       uid), { categories: buildDefaultBudget() }),
+        setDoc(doc(db, 'processional',  uid), { roles:      buildDefaultProcessional() }),
+        setDoc(doc(db, 'seating',       uid), { tables:     buildPrefillTables() }),
+        setDoc(doc(db, 'checklists',    uid), { items:      buildPrefillItems() }),
+      ]);
       if (auth.currentUser) await sendEmailVerification(auth.currentUser);
       navigate('/verify-email');
     } catch (err: any) {
