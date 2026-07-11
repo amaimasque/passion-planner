@@ -751,7 +751,8 @@ function BudgetBarChart({ categories }: { categories: BudgetCategory[] }) {
   const { fmt } = useCurrency();
 
   const data = categories.map((cat, i) => ({
-    name: cat.name.length > 14 ? cat.name.slice(0, 13) + '…' : cat.name,
+    name: cat.name.length > 12 ? cat.name.slice(0, 11) + '…' : cat.name,
+    fullName: cat.name,
     Estimated: categoryTotals(cat).estimated,
     Actual: categoryTotals(cat).actual,
     color: CHART_COLORS[i % CHART_COLORS.length],
@@ -771,8 +772,8 @@ function BudgetBarChart({ categories }: { categories: BudgetCategory[] }) {
         </div>
       ) : (
         <div className="px-4 py-5">
-          <ResponsiveContainer width="100%" height={248}>
-            <BarChart data={data} barCategoryGap="30%" barGap={3}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data} barCategoryGap="30%" barGap={3} margin={{ bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8DDD3" />
               <XAxis
                 dataKey="name"
@@ -780,6 +781,9 @@ function BudgetBarChart({ categories }: { categories: BudgetCategory[] }) {
                 axisLine={false}
                 tickLine={false}
                 interval={0}
+                angle={-40}
+                textAnchor="end"
+                height={70}
               />
               <YAxis
                 tick={{ fontSize: 10, fill: '#6D6A70' }}
@@ -790,6 +794,7 @@ function BudgetBarChart({ categories }: { categories: BudgetCategory[] }) {
               />
               <Tooltip
                 formatter={(value, name) => [fmt(Number(value)), name]}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
                 contentStyle={{
                   background: 'var(--color-app-surface, #fff)',
                   border: '1px solid #E8DDD3',
