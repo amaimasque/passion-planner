@@ -1,13 +1,76 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS variables (overridden at runtime by ThemeContext / dark mode) ─────── */
+:root {
+  /* Brand (changed by theme picker) */
+  --brand-primary-rgb: 201 123 132; /* #C97B84 Dusty Rose */
+  --brand-hover-rgb:   182 106 116; /* #B66A74 Rosewood   */
+
+  /* App surfaces — light mode */
+  --app-bg-rgb:      252 249 246; /* #FCF9F6 Warm Ivory  */
+  --app-surface-rgb: 255 255 255; /* #FFFFFF White        */
+  --app-border-rgb:  232 221 211; /* #E8DDD3 Soft Beige  */
+
+  /* Text — light mode */
+  --ink-rgb:         47  47  51;  /* #2F2F33 Charcoal    */
+  --ink-muted-rgb:   109 106 112; /* #6D6A70 Slate        */
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* ── Dark mode overrides ────────────────────────────────────────────────────── */
+.dark {
+  --app-bg-rgb:      22  20  30;  /* #16141E deep plum   */
+  --app-surface-rgb: 34  32  44;  /* #22202C card        */
+  --app-border-rgb:  56  53  70;  /* #383546 border      */
+  --ink-rgb:         237 232 224; /* #EDE8E0 warm white  */
+  --ink-muted-rgb:   152 146 164; /* #9892A4 muted       */
+}
+
+/* bg-ink is used as a dark header band — keep it dark in dark mode */
+.dark .bg-ink {
+  background-color: rgb(48 45 62) !important;
+  color: #EDE8E0 !important;
+}
+
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ── Print styles ─────────────────────────────────────────────────────────── */
+@media print {
+  /* Remove page margins */
+  @page { margin: 1cm; }
+
+  /* Make inputs, selects, and textareas look like plain text */
+  input,
+  select,
+  textarea {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    -webkit-appearance: none;
+    appearance: none;
+    color: inherit !important;
+    padding: 0 !important;
+  }
+
+  /* Prevent table rows from splitting across pages */
+  tr { page-break-inside: avoid; }
+
+  /* Dark section headers go light */
+  .bg-ink {
+    background-color: #e8e8e8 !important;
+    color: #2F2F33 !important;
+  }
+
+  /* Round corners and shadows don't print well */
+  .rounded-2xl,
+  .shadow-sm {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
 }

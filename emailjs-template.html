@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're Invited</title>
+</head>
+<body style="margin:0;padding:0;background-color:#FCF9F6;font-family:'Georgia',serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FCF9F6;padding:40px 16px;">
+    <tr>
+      <td align="center">
+
+        <!-- Outer card -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#FFFFFF;border-radius:20px;overflow:hidden;border:1px solid #E8DDD3;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+
+          <!-- ── Header ── -->
+          <tr>
+            <td style="background-color:#C97B84;padding:40px 40px 36px;text-align:center;">
+              <!-- Decorative line -->
+              <p style="margin:0 0 12px;font-family:'Georgia',serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.7);">
+                You are cordially invited
+              </p>
+              <!-- Couple names -->
+              <h1 style="margin:0 0 8px;font-family:'Georgia',serif;font-size:32px;font-weight:normal;color:#FFFFFF;line-height:1.2;letter-spacing:1px;">
+                {{couple_names}}
+              </h1>
+              <!-- Gold divider -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:16px auto 0;">
+                <tr>
+                  <td style="width:48px;height:1px;background-color:rgba(217,179,130,0.6);"></td>
+                  <td style="padding:0 10px;">
+                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background-color:#D9B382;"></span>
+                  </td>
+                  <td style="width:48px;height:1px;background-color:rgba(217,179,130,0.6);"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── Greeting ── -->
+          <tr>
+            <td style="padding:32px 40px 0;text-align:center;">
+              <p style="margin:0 0 6px;font-family:'Georgia',serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#6D6A70;">
+                Dear
+              </p>
+              <p style="margin:0;font-family:'Georgia',serif;font-size:24px;color:#2F2F33;font-weight:normal;">
+                {{guest_name}}
+              </p>
+              <p style="margin:20px 0 0;font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#6D6A70;max-width:380px;margin-left:auto;margin-right:auto;">
+                We joyfully request the pleasure of your company as we celebrate the beginning of our forever together.
+              </p>
+              <!-- Slots badge -->
+              <p style="margin:16px auto 0;display:inline-block;background-color:#FCF9F6;border:1px solid #E8DDD3;border-radius:50px;padding:6px 18px;font-family:Arial,sans-serif;font-size:12px;color:#6D6A70;">
+                &#127881;&nbsp; <strong style="color:#2F2F33;">{{slots}} {{slots_label}}</strong> reserved for you
+              </p>
+            </td>
+          </tr>
+
+          <!-- ── Gold divider ── -->
+          <tr>
+            <td style="padding:28px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="height:1px;background:linear-gradient(to right,transparent,#E8DDD3,transparent);"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── Event Details ── -->
+          <tr>
+            <td style="padding:0 40px 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FCF9F6;border-radius:12px;border:1px solid #E8DDD3;">
+
+                <!-- Date -->
+                <tr>
+                  <td style="padding:16px 20px 12px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:32px;vertical-align:top;padding-top:2px;">
+                          <span style="font-size:16px;">&#128197;</span>
+                        </td>
+                        <td style="vertical-align:top;">
+                          <p style="margin:0 0 2px;font-family:Arial,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C97B84;font-weight:bold;">Date</p>
+                          <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#2F2F33;">{{wedding_date}}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr><td style="padding:0 20px;"><div style="height:1px;background-color:#E8DDD3;"></div></td></tr>
+
+                <!-- Ceremony -->
+                <tr>
+                  <td style="padding:12px 20px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:32px;vertical-align:top;padding-top:2px;">
+                          <span style="font-size:16px;">&#9962;</span>
+                        </td>
+                        <td style="vertical-align:top;">
+                          <p style="margin:0 0 2px;font-family:Arial,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C97B84;font-weight:bold;">Ceremony &middot; {{ceremony_time}}</p>
+                          <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#2F2F33;">{{church_and_address}}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr><td style="padding:0 20px;"><div style="height:1px;background-color:#E8DDD3;"></div></td></tr>
+
+                <!-- Reception -->
+                <tr>
+                  <td style="padding:12px 20px 16px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:32px;vertical-align:top;padding-top:2px;">
+                          <span style="font-size:16px;">&#127949;</span>
+                        </td>
+                        <td style="vertical-align:top;">
+                          <p style="margin:0 0 2px;font-family:Arial,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C97B84;font-weight:bold;">Reception &middot; {{reception_start_time}}</p>
+                          <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#2F2F33;">{{reception_venue}}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── RSVP CTA ── -->
+          <tr>
+            <td style="padding:0 40px 12px;text-align:center;">
+              <p style="margin:0 0 20px;font-family:Arial,sans-serif;font-size:14px;color:#6D6A70;line-height:1.6;">
+                Kindly let us know if you'll be joining us by clicking the button below.
+              </p>
+              <a href="{{rsvp_url}}"
+                 style="display:inline-block;background-color:#C97B84;color:#FFFFFF;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:1px;text-decoration:none;padding:14px 40px;border-radius:50px;text-align:center;">
+                RSVP Now
+              </a>
+            </td>
+          </tr>
+
+          <!-- ── Fallback link ── -->
+          <tr>
+            <td style="padding:16px 40px 8px;text-align:center;">
+              <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;color:#6D6A70;">
+                Button not working? Copy and paste this link into your browser:
+              </p>
+              <p style="margin:6px 0 0;font-family:Arial,sans-serif;font-size:11px;">
+                <a href="{{rsvp_url}}" style="color:#C97B84;word-break:break-all;">{{rsvp_url}}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- ── Bottom divider ── -->
+          <tr>
+            <td style="padding:24px 40px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="height:1px;background-color:#E8DDD3;"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── Footer ── -->
+          <tr>
+            <td style="padding:20px 40px 32px;text-align:center;">
+              <!-- Heart icon -->
+              <p style="margin:0 0 10px;font-size:18px;color:#C97B84;">&#10084;&#65039;</p>
+              <p style="margin:0 0 4px;font-family:'Georgia',serif;font-size:13px;color:#2F2F33;font-style:italic;">
+                With love,
+              </p>
+              <p style="margin:0 0 16px;font-family:'Georgia',serif;font-size:15px;color:#2F2F33;">
+                {{couple_names}}
+              </p>
+              <p style="margin:0;font-family:Arial,sans-serif;font-size:10px;color:#6D6A70;letter-spacing:1px;text-transform:uppercase;">
+                Powered by Passion Planner
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Outer card -->
+
+        <!-- ── Below-card note ── -->
+        <p style="margin:20px auto 0;max-width:520px;font-family:Arial,sans-serif;font-size:11px;color:#6D6A70;text-align:center;line-height:1.6;">
+          You received this email because you were personally invited to this wedding. This link is unique to you — please do not share it.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

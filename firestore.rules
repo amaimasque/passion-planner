@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Each user can only read and write their own budget document
+    match /budgets/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own profile document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own suppliers document
+    match /suppliers/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own payments document
+    match /payments/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own guests document
+    match /guests/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own wedding details document
+    match /weddings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own processional document
+    match /processional/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own checklist document
+    match /checklists/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Each user can only read and write their own seating document
+    match /seating/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // RSVP tokens are publicly readable (guests access via link, no auth)
+    // Writes allowed from authenticated users (couple creating invite links)
+    match /rsvpTokens/{token} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+  }
+}
