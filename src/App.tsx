@@ -18,6 +18,7 @@ import Checklist from './pages/checklist/Checklist';
 import Seating from './pages/seating/Seating';
 import Media from './pages/media/Media';
 import RsvpPage from './pages/rsvp/RsvpPage';
+import Landing from './pages/landing/Landing';
 
 function PrivateLayout({ children }: { children: ReactNode }) {
   return (
@@ -33,6 +34,7 @@ function App() {
       <ThemeProvider>
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<PrivateLayout><Dashboard /></PrivateLayout>} />
@@ -47,7 +49,7 @@ function App() {
           <Route path="/media"          element={<PrivateLayout><Media /></PrivateLayout>} />
           <Route path="/settings"  element={<PrivateLayout><Settings /></PrivateLayout>} />
           <Route path="/rsvp/:token" element={<RsvpPage />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
       </ThemeProvider>
