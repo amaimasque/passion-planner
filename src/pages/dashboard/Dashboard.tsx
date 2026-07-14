@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   Users, UserCheck, Clock, UserX, Wallet,
   ClipboardList, Store, Circle, CheckCircle2, ArrowRight,
-  CalendarDays, ExternalLink,
+  CalendarDays, ExternalLink, Baby,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUserProfile } from '../../hooks/useUserProfile';
@@ -54,6 +54,7 @@ export default function Dashboard() {
   const confirmed  = guests.filter(g => g.rsvp === 'confirmed').length;
   const pending    = guests.filter(g => g.rsvp === 'pending').length;
   const declined   = guests.filter(g => g.rsvp === 'declined').length;
+  const totalKids  = guests.filter(g => g.isChild).length;
 
   const totalCheckDone  = checklistItems.filter(it => it.status === 'done').length;
   const totalCheckItems = checklistItems.length;
@@ -96,12 +97,13 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Stat cards — 4 column (guest stats) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {/* Stat cards — guest stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
           <StatCard icon={Users}     label="Guests Invited" value={totalHeads > 0 ? String(totalHeads) : '—'} iconBg="bg-brand-primary/10"  iconColor="text-brand-primary" href="/guests" />
           <StatCard icon={UserCheck} label="Confirmed"      value={confirmed  > 0 ? String(confirmed)  : '—'} iconBg="bg-positive/10"        iconColor="text-positive"      href="/guests" />
           <StatCard icon={Clock}     label="Pending"        value={pending    > 0 ? String(pending)    : '—'} iconBg="bg-caution/10"         iconColor="text-caution"       href="/guests" />
           <StatCard icon={UserX}     label="Declined"       value={declined   > 0 ? String(declined)   : '—'} iconBg="bg-danger/10"          iconColor="text-danger"        href="/guests" />
+          <StatCard icon={Baby}      label="Total Kids"     value={totalKids  > 0 ? String(totalKids)  : '—'} iconBg="bg-accent/10"          iconColor="text-accent"        href="/guests" />
         </div>
 
         {/* Stat cards — 2 column wide */}

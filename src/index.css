@@ -43,7 +43,47 @@
 /* ── Print styles ─────────────────────────────────────────────────────────── */
 @media print {
   /* Remove page margins */
-  @page { margin: 1cm; }
+  @page { margin: 1.5cm; }
+
+  /* Guest list — print only the content section */
+  body.printing-guests * { visibility: hidden; }
+  body.printing-guests #guest-print-root,
+  body.printing-guests #guest-print-root * { visibility: visible; }
+  body.printing-guests #guest-print-root {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+  }
+
+  /* Hide controls within the print root */
+  body.printing-guests .no-print { display: none !important; }
+  body.printing-guests .print-only { display: block !important; }
+
+  /* Guest print table */
+  body.printing-guests #guest-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+  }
+  body.printing-guests #guest-print-table th {
+    background: #f5ede9;
+    color: #2F2F33;
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 2px solid #C97B84;
+    white-space: nowrap;
+  }
+  body.printing-guests #guest-print-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #e8ddd3;
+    color: #2F2F33;
+    vertical-align: middle;
+  }
+  body.printing-guests #guest-print-table tr:nth-child(even) td {
+    background: #fcf9f6;
+  }
 
   /* Make inputs, selects, and textareas look like plain text */
   input,

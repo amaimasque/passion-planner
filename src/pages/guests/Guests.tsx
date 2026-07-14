@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Users, Plus, Pencil, Trash2, Search, ChevronDown, AlertTriangle, UtensilsCrossed, Phone, Mail, Send, Link2, Copy, Check, Download, Share2 } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Search, ChevronDown, ChevronUp, AlertTriangle, UtensilsCrossed, Phone, Mail, Send, Link2, Copy, Check, Download, Share2, LayoutGrid, List, Printer } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useGuests } from '../../hooks/useGuests';
 import Modal from '../../components/ui/Modal';
@@ -72,6 +72,7 @@ const EMPTY_FORM = {
   group: 'friends' as GuestGroup,
   slots: 1,
   notes: '',
+  isChild: false,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,6 +94,9 @@ export default function Guests() {
   const [search, setSearch] = useState('');
   const [filterRsvp, setFilterRsvp]   = useState<RsvpStatus | 'all'>('all');
   const [filterGroup, setFilterGroup] = useState<GuestGroup | 'all'>('all');
+  const [sortBy, setSortBy]   = useState<'firstName' | 'lastName'>('lastName');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [rsvpResult, setRsvpResult]   = useState<{ rsvpUrl: string } | null>(null);
@@ -233,6 +237,7 @@ export default function Guests() {
       group: g.group,
       slots: g.slots ?? 1,
       notes: g.notes ?? '',
+      isChild: g.isChild ?? false,
     });
     setModal({ type: 'edit', guest: g });
   }
@@ -261,6 +266,7 @@ export default function Guests() {
           group: form.group,
           slots: Math.max(1, form.slots),
           notes: form.notes.trim() || undefined,
+          isChild: form.isChild || undefined,
         };
         await save([...guests, newGuest]);
       } else if (modal?.type === 'edit') {
@@ -279,6 +285,7 @@ export default function Guests() {
                 group: form.group,
                 slots: Math.max(1, form.slots),
                 notes: form.notes.trim() || undefined,
+                isChild: form.isChild || undefined,
               }
             : g
         );
@@ -301,15 +308,38 @@ export default function Guests() {
     }
   }
 
-  // ── Filtering ───────────────────────────────────────────────────────────────
+  // ── Filtering + sorting ─────────────────────────────────────────────────────
 
-  const visible = guests.filter(g => {
-    const q = search.toLowerCase();
-    if (q && !guestDisplayName(g).toLowerCase().includes(q) && !(g.email ?? '').toLowerCase().includes(q)) return false;
-    if (filterRsvp  !== 'all' && g.rsvp  !== filterRsvp)  return false;
-    if (filterGroup !== 'all' && g.group !== filterGroup) return false;
-    return true;
-  });
+  function toggleSort(field: 'firstName' | 'lastName') {
+    if (sortBy === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortDir('asc');
+    }
+  }
+
+  const visible = guests
+    .filter(g => {
+      const q = search.toLowerCase();
+      if (q && !guestDisplayName(g).toLowerCase().includes(q) && !(g.email ?? '').toLowerCase().includes(q)) return false;
+      if (filterRsvp  !== 'all' && g.rsvp  !== filterRsvp)  return false;
+      if (filterGroup !== 'all' && g.group !== filterGroup) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const va = (a[sortBy] ?? '').toLowerCase();
+      const vb = (b[sortBy] ?? '').toLowerCase();
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+
+  // ── Print ───────────────────────────────────────────────────────────────────
+
+  function handlePrint() {
+    document.body.classList.add('printing-guests');
+    window.print();
+    document.body.classList.remove('printing-guests');
+  }
 
   // ── Stats ───────────────────────────────────────────────────────────────────
 
@@ -317,6 +347,7 @@ export default function Guests() {
   const confirmed   = guests.filter(g => g.rsvp === 'confirmed').length;
   const pending     = guests.filter(g => g.rsvp === 'pending').length;
   const declined    = guests.filter(g => g.rsvp === 'declined').length;
+  const totalKids   = guests.filter(g => g.isChild).length;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -332,27 +363,66 @@ export default function Guests() {
     <div className="bg-app-bg font-sans min-h-screen">
 
       {/* ── Header ── */}
-      <header className="bg-app-surface border-b border-app-border sticky top-0 z-10">
+      <header className="bg-app-surface border-b border-app-border sticky top-0 z-10 no-print">
         <div className="px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Users className="text-brand-primary w-5 h-5" />
             <span className="font-serif text-lg font-semibold text-ink tracking-wide">Guest List</span>
           </div>
-          <Button variant="primary" size="sm" onClick={openAdd}>
-            <Plus className="w-4 h-4 mr-1" /> Add Guest
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center gap-0.5 bg-app-bg border border-app-border rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('card')}
+                title="Card view"
+                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'card' ? 'bg-app-surface text-brand-primary shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                title="List view"
+                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-app-surface text-brand-primary shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Print */}
+            <button
+              type="button"
+              onClick={handlePrint}
+              title="Print guest list"
+              className="p-2 rounded-xl border border-app-border bg-app-surface text-ink-muted hover:text-brand-primary hover:border-brand-primary/30 transition-colors"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <Button variant="primary" size="sm" onClick={openAdd}>
+              <Plus className="w-4 h-4 mr-1" /> Add Guest
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="p-4 lg:p-6 space-y-5">
+      <div id="guest-print-root" className="p-4 lg:p-6 space-y-5">
+
+        {/* ── Print-only title ── */}
+        <div className="print-only hidden">
+          <h1 className="font-serif text-2xl font-bold text-ink mb-1">Guest List</h1>
+          <p className="text-xs text-ink-muted mb-4">
+            {guests.length} guests · {totalHeads} total heads · {confirmed} confirmed · {pending} pending · {declined} declined · {totalKids} kids
+          </p>
+        </div>
 
         {/* ── Stats row ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="no-print grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             { label: 'Total Heads',  value: totalHeads, cls: 'text-ink' },
             { label: 'Confirmed',    value: confirmed,  cls: 'text-positive' },
             { label: 'Pending',      value: pending,    cls: 'text-caution' },
             { label: 'Declined',     value: declined,   cls: 'text-danger' },
+            { label: 'Total Kids',   value: totalKids,  cls: 'text-accent' },
           ].map(s => (
             <div key={s.label} className="bg-app-surface rounded-2xl border border-app-border px-4 py-3">
               <p className="text-xs text-ink-muted mb-0.5">{s.label}</p>
@@ -362,7 +432,7 @@ export default function Guests() {
         </div>
 
         {/* ── Search + filters ── */}
-        <div className="flex flex-wrap gap-2">
+        <div className="no-print flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-muted pointer-events-none" />
             <input
@@ -396,11 +466,35 @@ export default function Guests() {
               { value: 'other',   label: 'Other' },
             ]}
           />
+
+          {/* Sort buttons */}
+          <div className="flex items-center gap-1 bg-app-surface border border-app-border rounded-xl px-2 py-1.5">
+            <span className="text-[10px] text-ink-muted mr-0.5 whitespace-nowrap">Sort:</span>
+            {(['firstName', 'lastName'] as const).map(field => (
+              <button
+                key={field}
+                type="button"
+                onClick={() => toggleSort(field)}
+                className={`flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-colors ${
+                  sortBy === field
+                    ? 'bg-brand-primary text-white'
+                    : 'text-ink-muted hover:text-ink hover:bg-app-bg'
+                }`}
+              >
+                {field === 'firstName' ? 'First' : 'Last'}
+                {sortBy === field && (
+                  sortDir === 'asc'
+                    ? <ChevronUp className="w-3 h-3" />
+                    : <ChevronDown className="w-3 h-3" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── Guest count ── */}
         {guests.length > 0 && (
-          <p className="text-xs text-ink-muted">
+          <p className="no-print text-xs text-ink-muted">
             Showing <strong className="text-ink">{visible.length}</strong> of <strong className="text-ink">{guests.length}</strong> guests
           </p>
         )}
@@ -429,18 +523,68 @@ export default function Guests() {
             </button>
           </div>
         ) : (
-          /* ── Guest cards grid ── */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {visible.map(g => (
-              <GuestCard
-                key={g.id}
-                guest={g}
-                onEdit={() => openEdit(g)}
-                onDelete={() => setModal({ type: 'confirmDelete', guest: g })}
-                onRsvp={() => openRsvp(g)}
-              />
-            ))}
-          </div>
+          <>
+            {/* ── Card view ── */}
+            {viewMode === 'card' && (
+              <div className="no-print grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {visible.map(g => (
+                  <GuestCard
+                    key={g.id}
+                    guest={g}
+                    onEdit={() => openEdit(g)}
+                    onDelete={() => setModal({ type: 'confirmDelete', guest: g })}
+                    onRsvp={() => openRsvp(g)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* ── List view ── */}
+            {viewMode === 'list' && (
+              <div className="no-print bg-app-surface border border-app-border rounded-2xl overflow-hidden">
+                <GuestTable
+                  guests={visible}
+                  onEdit={g => openEdit(g)}
+                  onDelete={g => setModal({ type: 'confirmDelete', guest: g })}
+                  onRsvp={g => openRsvp(g)}
+                />
+              </div>
+            )}
+
+            {/* ── Print table (always rendered, visible only when printing) ── */}
+            <div className="print-only hidden">
+              <table id="guest-print-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Group</th>
+                    <th>RSVP</th>
+                    <th>Meal</th>
+                    <th>Slots</th>
+                    <th>Child</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((g, i) => (
+                    <tr key={g.id}>
+                      <td>{i + 1}</td>
+                      <td>{guestDisplayName(g)}</td>
+                      <td>{GROUP_LABELS[g.group]}</td>
+                      <td>{RSVP_LABELS[g.rsvp]}</td>
+                      <td>{MEAL_LABELS[g.meal]}</td>
+                      <td>{g.slots ?? 1}</td>
+                      <td>{g.isChild ? 'Yes' : ''}</td>
+                      <td>{g.email ?? ''}</td>
+                      <td>{g.phone ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -560,6 +704,17 @@ export default function Guests() {
                 className="w-full px-3 py-2 text-xs border border-app-border rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/30 resize-none text-ink placeholder:text-ink-muted"
               />
             </div>
+
+            {/* Is Child */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.isChild}
+                onChange={e => set('isChild', e.target.checked)}
+                className="w-4 h-4 rounded border-app-border accent-brand-primary"
+              />
+              <span className="text-xs text-ink">This guest is a child</span>
+            </label>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setModal(null)}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={handleSave} isLoading={saving} disabled={!form.firstName.trim() || !form.lastName.trim()}>
@@ -731,6 +886,102 @@ export default function Guests() {
   );
 }
 
+// ── Guest Table (list view) ────────────────────────────────────────────────────
+
+function GuestTable({ guests, onEdit, onDelete, onRsvp }: {
+  guests: Guest[];
+  onEdit: (g: Guest) => void;
+  onDelete: (g: Guest) => void;
+  onRsvp: (g: Guest) => void;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-app-border bg-app-bg">
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">#</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">Name</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">Group</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">RSVP</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">Meal</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">Slots</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">Child</th>
+            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">Contact</th>
+            <th className="px-4 py-2.5" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-app-border/60">
+          {guests.map((g, i) => (
+            <tr key={g.id} className="hover:bg-app-bg/60 transition-colors group">
+              <td className="px-4 py-2.5 text-ink-muted tabular-nums">{i + 1}</td>
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-brand-primary/15 flex items-center justify-center text-brand-primary text-[10px] font-semibold flex-shrink-0 select-none">
+                    {((g.firstName?.[0] ?? '') + (g.lastName?.[0] ?? '')).toUpperCase() || '?'}
+                  </div>
+                  <span className="font-medium text-ink whitespace-nowrap">{guestDisplayName(g)}</span>
+                </div>
+              </td>
+              <td className="px-4 py-2.5">
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${GROUP_STYLES[g.group]}`}>
+                  {GROUP_LABELS[g.group]}
+                </span>
+              </td>
+              <td className="px-4 py-2.5">
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${RSVP_STYLES[g.rsvp]}`}>
+                  {RSVP_LABELS[g.rsvp]}
+                </span>
+              </td>
+              <td className="px-4 py-2.5 text-ink-muted whitespace-nowrap">
+                {g.meal !== 'standard' ? (
+                  <span className="flex items-center gap-1">
+                    <UtensilsCrossed className="w-3 h-3" />{MEAL_LABELS[g.meal]}
+                  </span>
+                ) : (
+                  <span className="text-ink-muted/50">Standard</span>
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-ink tabular-nums">{g.slots ?? 1}</td>
+              <td className="px-4 py-2.5">
+                {g.isChild && (
+                  <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent">Child</span>
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-ink-muted">
+                <div className="space-y-0.5">
+                  {g.email && (
+                    <a href={`mailto:${g.email}`} className="flex items-center gap-1 hover:text-brand-primary transition-colors truncate max-w-[160px]">
+                      <Mail className="w-3 h-3 flex-shrink-0" />{g.email}
+                    </a>
+                  )}
+                  {g.phone && (
+                    <a href={`tel:${g.phone}`} className="flex items-center gap-1 hover:text-brand-primary transition-colors">
+                      <Phone className="w-3 h-3 flex-shrink-0" />{g.phone}
+                    </a>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button" onClick={() => onRsvp(g)} className="p-1.5 rounded-lg text-ink-muted hover:text-brand-primary hover:bg-brand-primary/5 transition-colors" title="Send RSVP">
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => onEdit(g)} className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-app-bg transition-colors" title="Edit">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => onDelete(g)} className="p-1.5 rounded-lg text-ink-muted hover:text-danger hover:bg-danger/5 transition-colors" title="Remove">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Guest Card ─────────────────────────────────────────────────────────────────
 
 function GuestCard({ guest: g, onEdit, onDelete, onRsvp }: { guest: Guest; onEdit: () => void; onDelete: () => void; onRsvp: () => void }) {
@@ -787,6 +1038,11 @@ function GuestCard({ guest: g, onEdit, onDelete, onRsvp }: { guest: Guest; onEdi
           <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-app-border/50 text-ink-muted">
             <UtensilsCrossed className="w-2.5 h-2.5" />
             {MEAL_LABELS[g.meal]}
+          </span>
+        )}
+        {g.isChild && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent">
+            Child
           </span>
         )}
         {g.rsvpEmailSentAt && (

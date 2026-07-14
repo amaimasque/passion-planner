@@ -15,6 +15,7 @@ export interface Guest {
   group: GuestGroup;
   slots: number; // seats allocated (includes the guest themselves)
   notes?: string;
+  isChild?: boolean;
   // RSVP email tracking
   rsvpToken?: string;        // active invite token
   rsvpEmailSentAt?: number;  // epoch ms — when invite email was last sent
