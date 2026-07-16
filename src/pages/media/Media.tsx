@@ -178,7 +178,7 @@ function WeddingWebsiteSection() {
   const { tables, loading: seatingLoading } = useSeating();
   const { data: attireData, loading: attireLoading } = useAttire();
   const { guests, loading: guestsLoading } = useGuests();
-  const { roles: processionalRoles, loading: processionalLoading } = useProcessional();
+  const { roles: processionalRoles } = useProcessional();
 
   const [published, setPublished] = useState<WeddingWebsiteData | null>(null);
   const [publishing, setPublishing] = useState(false);
