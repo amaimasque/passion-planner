@@ -5,7 +5,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useProgramFlow } from '../../hooks/useProgramFlow';
+import { useProgramFlow, BUILT_IN_SECTIONS } from '../../hooks/useProgramFlow';
 import type { ProgramItem } from '../../hooks/useProgramFlow';
 import { useWeddingDetails } from '../../hooks/useWeddingDetails';
 import { generateProgramFlow } from '../../services/geminiEstimator';
@@ -23,14 +23,22 @@ function fmt12h(time: string) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-const SECTION_META = {
-  ceremony:  { label: 'Ceremony',     color: 'bg-brand-primary',   dot: 'bg-brand-primary' },
-  cocktail:  { label: 'Cocktail Hour', color: 'bg-brand-secondary', dot: 'bg-brand-secondary' },
-  reception: { label: 'Reception',    color: 'bg-accent',          dot: 'bg-accent' },
-} as const;
+const SECTION_META: Record<string, { label: string; color: string }> = {
+  ceremony:  { label: 'Ceremony',      color: 'bg-brand-primary'   },
+  cocktail:  { label: 'Cocktail Hour', color: 'bg-brand-secondary' },
+  reception: { label: 'Reception',     color: 'bg-accent'          },
+};
 
-type Section = keyof typeof SECTION_META;
-const SECTIONS: Section[] = ['ceremony', 'cocktail', 'reception'];
+const CUSTOM_COLORS = [
+  'bg-positive', 'bg-caution', 'bg-danger',
+  'bg-[#9b7ea3]', 'bg-[#5c8f7f]', 'bg-[#7a6e9e]',
+];
+
+function getSectionMeta(section: string, customSections: string[]) {
+  if (SECTION_META[section]) return SECTION_META[section];
+  const idx = customSections.indexOf(section);
+  return { label: section, color: CUSTOM_COLORS[idx % CUSTOM_COLORS.length] };
+}
 
 // Required wedding detail fields for gating AI
 interface RequiredField { key: string; label: string; value: string | number }
@@ -38,23 +46,31 @@ interface RequiredField { key: string; label: string; value: string | number }
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function ProgramFlow() {
-  const { items, loading, save } = useProgramFlow();
+  const { items, customSections, sectionOrder, loading, save, saveCustomSections, saveSectionOrder } = useProgramFlow();
   const { details, loading: detailsLoading } = useWeddingDetails();
 
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState<
-    | { type: 'addItem'; section: Section }
+    | { type: 'addItem'; section: string }
     | { type: 'editItem'; item: ProgramItem }
     | { type: 'confirmDelete'; item: ProgramItem }
+    | { type: 'confirmDeleteSection'; section: string }
     | { type: 'aiPreview'; generated: ProgramItem[] }
     | null
   >(null);
 
-  const [itemForm, setItemForm] = useState({ time: '', title: '', description: '', section: 'ceremony' as Section });
+  const [itemForm, setItemForm] = useState({ time: '', title: '', description: '', section: 'ceremony' });
+  const [addingSection, setAddingSection] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [sectionError, setSectionError] = useState('');
 
-  // Drag-to-reorder
+  // Item drag-to-reorder
   const dragIndex = useRef<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  // Section drag-to-reorder
+  const sectionDragIdx = useRef<number | null>(null);
+  const [sectionOverIdx, setSectionOverIdx] = useState<number | null>(null);
 
   // AI state
   const [aiLoading, setAiLoading] = useState(false);
@@ -74,12 +90,12 @@ export default function ProgramFlow() {
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
-  async function doSave(updated: ProgramItem[]) {
+  async function doSave(updated: ProgramItem[], sections?: string[]) {
     setSaving(true);
-    try { await save(updated); } finally { setSaving(false); }
+    try { await save(updated, sections); } finally { setSaving(false); }
   }
 
-  function openAddItem(section: Section) {
+  function openAddItem(section: string) {
     setItemForm({ time: '', title: '', description: '', section });
     setModal({ type: 'addItem', section });
   }
@@ -92,6 +108,37 @@ export default function ProgramFlow() {
       section: item.section,
     });
     setModal({ type: 'editItem', item });
+  }
+
+  async function addCustomSection() {
+    const name = newSectionName.trim();
+    if (!name) return;
+    const lower = name.toLowerCase();
+    if (BUILT_IN_SECTIONS.includes(lower) ||
+        Object.values(SECTION_META).some(m => m.label.toLowerCase() === lower)) {
+      setSectionError('That section already exists.');
+      return;
+    }
+    if (customSections.some(s => s.toLowerCase() === lower)) {
+      setSectionError('A custom section with that name already exists.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveCustomSections([...customSections, name]);
+      setNewSectionName('');
+      setAddingSection(false);
+      setSectionError('');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteCustomSection(section: string) {
+    const newItems = items.filter(i => i.section !== section);
+    const newSections = customSections.filter(s => s !== section);
+    await doSave(newItems, newSections);
+    setModal(null);
   }
 
   async function submitItem() {
@@ -138,6 +185,30 @@ export default function ProgramFlow() {
     doSave(reordered);
   }
   function handleDragEnd() { dragIndex.current = null; setOverIndex(null); }
+
+  // ── Section drag ───────────────────────────────────────────────────────────
+
+  function handleSectionDragStart(e: React.DragEvent, idx: number) {
+    e.stopPropagation();
+    sectionDragIdx.current = idx;
+  }
+  function handleSectionDragOver(e: React.DragEvent, idx: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (sectionOverIdx !== idx) setSectionOverIdx(idx);
+  }
+  async function handleSectionDrop(e: React.DragEvent, idx: number) {
+    e.stopPropagation();
+    const from = sectionDragIdx.current;
+    sectionDragIdx.current = null;
+    setSectionOverIdx(null);
+    if (from === null || from === idx) return;
+    const reordered = [...sectionOrder];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(idx, 0, moved);
+    await saveSectionOrder(reordered);
+  }
+  function handleSectionDragEnd() { sectionDragIdx.current = null; setSectionOverIdx(null); }
 
   // ── AI ─────────────────────────────────────────────────────────────────────
 
@@ -191,7 +262,6 @@ export default function ProgramFlow() {
     );
   }
 
-  const sectionItems = (section: Section) => items.filter(i => i.section === section);
   const sectionIndex = (item: ProgramItem) => items.findIndex(i => i.id === item.id);
 
   return (
@@ -298,85 +368,116 @@ export default function ProgramFlow() {
           </div>
         )}
 
-        {/* Sections */}
-        {SECTIONS.map(section => {
-          const secItems = sectionItems(section);
-          const meta = SECTION_META[section];
-          if (secItems.length === 0 && items.length > 0) return null;
-          if (secItems.length === 0) return null;
+        {/* Sections — in sectionOrder */}
+        {sectionOrder.map((section, secIdx) => {
+          const isCustom = !BUILT_IN_SECTIONS.includes(section);
+          const meta = getSectionMeta(section, customSections);
+          const secItems = items.filter(i => i.section === section);
+
+          // Hide built-in sections when they have no items
+          if (secItems.length === 0 && !isCustom) return null;
+
+          const isSectionDragging = sectionDragIdx.current === secIdx;
+          const isSectionOver = sectionOverIdx === secIdx && sectionDragIdx.current !== secIdx;
 
           return (
-            <div key={section} className="bg-app-surface border border-app-border rounded-2xl overflow-hidden">
+            <div
+              key={section}
+              draggable
+              onDragStart={e => handleSectionDragStart(e, secIdx)}
+              onDragOver={e => handleSectionDragOver(e, secIdx)}
+              onDrop={e => handleSectionDrop(e, secIdx)}
+              onDragEnd={handleSectionDragEnd}
+              className={[
+                'bg-app-surface border border-app-border rounded-2xl overflow-hidden transition-all',
+                isSectionDragging ? 'opacity-40 scale-[0.99]' : '',
+                isSectionOver ? 'ring-2 ring-brand-primary' : '',
+              ].join(' ')}
+            >
               {/* Section header */}
               <div className={`${meta.color} px-5 py-2.5 flex items-center justify-between`}>
-                <span className="text-sm font-bold text-white tracking-wide uppercase">{meta.label}</span>
-                <button
-                  onClick={() => openAddItem(section)}
-                  className="flex items-center gap-1 text-white/80 hover:text-white text-xs font-medium transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add
-                </button>
+                <div className="flex items-center gap-2">
+                  <GripVertical className="w-4 h-4 text-white/50 hover:text-white cursor-grab active:cursor-grabbing transition-colors flex-shrink-0" />
+                  <span className="text-sm font-bold text-white tracking-wide uppercase">{meta.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openAddItem(section)}
+                    className="flex items-center gap-1 text-white/80 hover:text-white text-xs font-medium transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
+                  {isCustom && (
+                    <button
+                      onClick={() => setModal({ type: 'confirmDeleteSection', section })}
+                      className="p-0.5 text-white/60 hover:text-white transition-colors"
+                      title="Delete section"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Items */}
-              <div className="divide-y divide-app-border/60">
-                {secItems.map((item) => {
-                  const globalIdx = sectionIndex(item);
-                  const isDragging = dragIndex.current === globalIdx;
-                  const isOver = overIndex === globalIdx && dragIndex.current !== globalIdx;
-                  return (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={() => handleDragStart(globalIdx)}
-                      onDragOver={e => handleDragOver(e, globalIdx)}
-                      onDrop={() => handleDrop(globalIdx)}
-                      onDragEnd={handleDragEnd}
-                      className={[
-                        'group flex items-start gap-3 px-5 py-4 transition-all',
-                        isDragging ? 'opacity-40 bg-brand-primary/5' : 'hover:bg-app-bg/50',
-                        isOver ? 'border-t-2 border-brand-primary' : '',
-                      ].join(' ')}
-                    >
-                      <GripVertical className="w-4 h-4 text-ink-muted/30 hover:text-ink-muted cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5 transition-colors" />
-
-                      {/* Time */}
-                      <div className="w-20 flex-shrink-0 pt-0.5">
-                        <span className="text-xs font-semibold text-brand-primary tabular-nums">
-                          {item.time || '—'}
-                        </span>
+              {secItems.length > 0 ? (
+                <div className="divide-y divide-app-border/60">
+                  {secItems.map((item) => {
+                    const globalIdx = sectionIndex(item);
+                    const isDragging = dragIndex.current === globalIdx;
+                    const isOver = overIndex === globalIdx && dragIndex.current !== globalIdx;
+                    return (
+                      <div
+                        key={item.id}
+                        draggable
+                        onDragStart={() => handleDragStart(globalIdx)}
+                        onDragOver={e => handleDragOver(e, globalIdx)}
+                        onDrop={() => handleDrop(globalIdx)}
+                        onDragEnd={handleDragEnd}
+                        className={[
+                          'group flex items-start gap-3 px-5 py-4 transition-all',
+                          isDragging ? 'opacity-40 bg-brand-primary/5' : 'hover:bg-app-bg/50',
+                          isOver ? 'border-t-2 border-brand-primary' : '',
+                        ].join(' ')}
+                      >
+                        <GripVertical className="w-4 h-4 text-ink-muted/30 hover:text-ink-muted cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5 transition-colors" />
+                        <div className="w-20 flex-shrink-0 pt-0.5">
+                          <span className="text-xs font-semibold text-brand-primary tabular-nums">
+                            {item.time || '—'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-ink">{item.title}</p>
+                          {item.description && (
+                            <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <button
+                            onClick={() => openEditItem(item)}
+                            className="p-1.5 text-ink-muted hover:text-ink hover:bg-app-border rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setModal({ type: 'confirmDelete', item })}
+                            className="p-1.5 text-ink-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-ink">{item.title}</p>
-                        {item.description && (
-                          <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{item.description}</p>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button
-                          onClick={() => openEditItem(item)}
-                          className="p-1.5 text-ink-muted hover:text-ink hover:bg-app-border rounded-lg transition-all"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setModal({ type: 'confirmDelete', item })}
-                          className="p-1.5 text-ink-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="px-5 py-6 text-center">
+                  <p className="text-xs text-ink-muted">No items yet</p>
+                </div>
+              )}
 
               {/* Add item footer */}
               <div className="px-5 py-3 border-t border-app-border/60">
@@ -392,30 +493,68 @@ export default function ProgramFlow() {
           );
         })}
 
-        {/* Add section buttons when items exist */}
-        {items.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {SECTIONS.map(section => {
-              const meta = SECTION_META[section];
-              return (
-                <button
-                  key={section}
-                  onClick={() => openAddItem(section)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dashed border-app-border rounded-xl text-ink-muted hover:text-ink hover:border-ink-muted transition-all"
-                >
-                  <Plus className="w-3 h-3" />
-                  Add to {meta.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Add section / quick-add buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {items.length > 0 && sectionOrder
+            .filter(s => !items.some(i => i.section === s) && BUILT_IN_SECTIONS.includes(s))
+            .map(section => (
+              <button
+                key={section}
+                onClick={() => openAddItem(section)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dashed border-app-border rounded-xl text-ink-muted hover:text-ink hover:border-ink-muted transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                Add to {getSectionMeta(section, customSections).label}
+              </button>
+            ))}
+
+          {/* New custom section */}
+          {addingSection ? (
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Section name…"
+                    value={newSectionName}
+                    onChange={e => { setNewSectionName(e.target.value); setSectionError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') addCustomSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSectionName(''); setSectionError(''); } }}
+                    className="px-3 py-1.5 text-xs border border-app-border rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/30 text-ink placeholder:text-ink-muted/50 bg-app-surface w-40"
+                  />
+                  <button
+                    onClick={addCustomSection}
+                    disabled={!newSectionName.trim() || saving}
+                    className="p-1.5 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors disabled:opacity-40"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => { setAddingSection(false); setNewSectionName(''); setSectionError(''); }}
+                    className="p-1.5 text-ink-muted hover:text-ink rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {sectionError && <p className="text-[11px] text-danger px-1">{sectionError}</p>}
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingSection(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dashed border-brand-primary/40 rounded-xl text-brand-primary hover:bg-brand-primary/5 transition-all"
+            >
+              <Plus className="w-3 h-3" />
+              New Section
+            </button>
+          )}
+        </div>
       </main>
 
       {/* ── Add / Edit Item Modal ── */}
       {(modal?.type === 'addItem' || modal?.type === 'editItem') && (
         <Modal
-          title={modal.type === 'addItem' ? `Add ${SECTION_META[modal.type === 'addItem' ? modal.section : itemForm.section].label} Item` : 'Edit Item'}
+          title={modal.type === 'addItem' ? `Add ${getSectionMeta(modal.section, customSections).label} Item` : 'Edit Item'}
           onClose={() => setModal(null)}
         >
           <div className="space-y-4">
@@ -434,11 +573,14 @@ export default function ProgramFlow() {
                 <label className="block text-sm font-medium text-ink mb-1.5">Section</label>
                 <select
                   value={itemForm.section}
-                  onChange={e => setItemForm({ ...itemForm, section: e.target.value as Section })}
+                  onChange={e => setItemForm({ ...itemForm, section: e.target.value })}
                   className="w-full px-4 py-3 text-sm bg-app-surface border border-app-border rounded-xl text-ink focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary transition-all"
                 >
-                  {SECTIONS.map(s => (
+                  {BUILT_IN_SECTIONS.map(s => (
                     <option key={s} value={s}>{SECTION_META[s].label}</option>
+                  ))}
+                  {customSections.map(s => (
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
@@ -476,6 +618,34 @@ export default function ProgramFlow() {
         </Modal>
       )}
 
+      {/* ── Confirm Delete Section Modal ── */}
+      {modal?.type === 'confirmDeleteSection' && (() => {
+        const count = items.filter(i => i.section === modal.section).length;
+        return (
+          <Modal title="Delete Section" onClose={() => setModal(null)} size="sm">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-danger/8 border border-danger/20 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-ink">
+                  Delete <span className="font-semibold">"{modal.section}"</span>?
+                  {count > 0 && (
+                    <> This will also delete the <span className="font-semibold">{count} item{count !== 1 ? 's' : ''}</span> inside it.</>
+                  )}
+                  {count === 0 && ' This section is empty.'}
+                  {' '}This cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="ghost" fullWidth onClick={() => setModal(null)}>Cancel</Button>
+                <Button variant="danger" fullWidth isLoading={saving} onClick={() => deleteCustomSection(modal.section)}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
       {/* ── Confirm Delete Modal ── */}
       {modal?.type === 'confirmDelete' && (
         <Modal title="Delete Item" onClose={() => setModal(null)} size="sm">
@@ -501,15 +671,15 @@ export default function ProgramFlow() {
             <div className="p-3.5 bg-brand-primary/5 border border-brand-primary/15 rounded-xl flex items-center gap-2">
               <Wand2 className="w-3.5 h-3.5 text-brand-primary flex-shrink-0" />
               <p className="text-xs text-ink-muted">
-                {modal.generated.length} items generated across {SECTIONS.filter(s => modal.generated.some(i => i.section === s)).length} sections. Review below, then apply.
+                {modal.generated.length} items generated across {new Set(modal.generated.map(i => i.section)).size} sections. Review below, then apply.
               </p>
             </div>
 
             <div className="max-h-96 overflow-y-auto space-y-1 pr-1">
-              {SECTIONS.map(section => {
+              {[...new Set(modal.generated.map(i => i.section))].map(section => {
                 const secItems = modal.generated.filter(i => i.section === section);
                 if (secItems.length === 0) return null;
-                const meta = SECTION_META[section];
+                const meta = getSectionMeta(section, customSections);
                 return (
                   <div key={section}>
                     <div className={`${meta.color} px-3 py-1.5 rounded-lg mb-1`}>

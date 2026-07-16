@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
 import { db } from '../../firebase';
 import type { WeddingWebsiteData, PublicAttireSet, PublicGuestAttire } from '../../types/weddingWebsite';
 
@@ -9,9 +9,12 @@ import type { WeddingWebsiteData, PublicAttireSet, PublicGuestAttire } from '../
 
 function fmt12h(time: string) {
   if (!time) return '';
-  const [h, m] = time.split(':').map(Number);
+  const [hStr, mStr] = time.split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h)) return time;
   const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${h % 12 || 12}:${isNaN(m) ? '00' : String(m).padStart(2, '0')} ${ampm}`;
 }
 
 function fmtDate(dateStr: string) {
@@ -20,12 +23,14 @@ function fmtDate(dateStr: string) {
   return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-const SECTION_LABEL: Record<string, string> = {
+const BUILT_IN_SECTION_LABELS: Record<string, string> = {
   ceremony: 'Ceremony',
   cocktail: 'Cocktail Hour',
   reception: 'Reception',
 };
-const SECTIONS = ['ceremony', 'cocktail', 'reception'] as const;
+function sectionLabel(s: string) {
+  return BUILT_IN_SECTION_LABELS[s] ?? s;
+}
 
 function hasSet(a: PublicAttireSet) {
   return !!(a?.top || a?.bottom || a?.shoes);
@@ -212,6 +217,7 @@ const NAV_LINKS = [
 
 function WebsiteNav({ coupleName, color1 }: { coupleName: string; color1: string }) {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 60);
@@ -219,36 +225,81 @@ function WebsiteNav({ coupleName, color1 }: { coupleName: string; color1: string
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  // Close menu when user starts scrolling
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener('scroll', close, { passive: true, once: true });
+    return () => window.removeEventListener('scroll', close);
+  }, [menuOpen]);
+
   function scrollTo(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMenuOpen(false);
+    // Small delay lets the menu animate closed before scrolling
+    setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
   }
+
+  const solid = scrolled || menuOpen;
+  const linkColor = solid ? '#6b5e55' : 'rgba(255,255,255,0.65)';
+  const nameColor = solid ? color1 : 'rgba(255,255,255,0.9)';
+  const burgerColor = solid ? '#6b5e55' : 'rgba(255,255,255,0.85)';
 
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
-        background: scrolled ? 'rgba(255,255,255,0.97)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(8px)' : 'none',
-        boxShadow: scrolled ? '0 1px 12px rgba(0,0,0,0.06)' : 'none',
+        background: solid ? 'rgba(255,255,255,0.97)' : 'transparent',
+        backdropFilter: solid ? 'blur(8px)' : 'none',
+        boxShadow: solid ? '0 1px 12px rgba(0,0,0,0.06)' : 'none',
       }}
     >
+      {/* ── Bar ── */}
       <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
         <span
-          style={{
-            fontFamily: 'Playfair Display, serif',
-            color: scrolled ? color1 : 'rgba(255,255,255,0.9)',
-          }}
+          style={{ fontFamily: 'Playfair Display, serif', color: nameColor }}
           className="font-bold text-sm truncate shrink-0 transition-colors duration-300"
         >
           {coupleName}
         </span>
-        <div className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto">
+
+        {/* Desktop links */}
+        <div className="hidden sm:flex items-center gap-1">
           {NAV_LINKS.map(link => (
             <button
               key={link.id}
               onClick={() => scrollTo(link.id)}
-              className="text-[9px] sm:text-[10px] font-semibold tracking-[0.15em] uppercase whitespace-nowrap px-2 py-1 rounded transition-colors duration-300"
-              style={{ color: scrolled ? '#6b5e55' : 'rgba(255,255,255,0.65)' }}
+              className="text-[10px] font-semibold tracking-[0.15em] uppercase whitespace-nowrap px-2 py-1 rounded transition-colors duration-300"
+              style={{ color: linkColor }}
+            >
+              {link.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile burger */}
+        <button
+          className="sm:hidden p-1.5 -mr-1 rounded-lg transition-colors duration-300"
+          style={{ color: burgerColor }}
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+        >
+          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* ── Mobile dropdown ── */}
+      <div
+        className="sm:hidden overflow-hidden transition-all duration-300"
+        style={{ maxHeight: menuOpen ? `${NAV_LINKS.length * 52}px` : '0px' }}
+      >
+        <div className="border-t border-[#ede5dc]">
+          {NAV_LINKS.map(link => (
+            <button
+              key={link.id}
+              onClick={() => scrollTo(link.id)}
+              className="w-full text-left px-6 py-3.5 text-[11px] font-semibold tracking-[0.2em] uppercase text-[#4a3f35] hover:bg-[#faf7f4] active:bg-[#f3ece4] transition-colors border-b border-[#f0e8e0] last:border-b-0"
             >
               {link.label}
             </button>
@@ -368,10 +419,8 @@ export default function WeddingWebsite() {
   // Readable version of color1 for text on the light page background
   const textColor1 = readableOnLight(color1);
 
-  const programBySec = SECTIONS.reduce<Record<string, typeof data.programFlow>>((acc, s) => {
-    acc[s] = (data.programFlow ?? []).filter(i => i.section === s);
-    return acc;
-  }, {} as Record<string, typeof data.programFlow>);
+  // Derive all sections in the order they first appear (preserves custom section order)
+  const programSections = [...new Set((data.programFlow ?? []).map(i => i.section))];
   const hasProgramFlow = (data.programFlow ?? []).length > 0;
   const hasSeating = (data.seating ?? []).some(t => t.guestNames.length > 0);
   const showAttire = hasAttire(data.guestAttire) || !!data.attire || (data.roleAttires ?? []).length > 0;
@@ -656,22 +705,22 @@ export default function WeddingWebsite() {
               </FadeUp>
 
               <div className="space-y-10">
-                {SECTIONS.map(sec => {
-                  const items = programBySec[sec];
-                  if (!items?.length) return null;
+                {programSections.map(sec => {
+                  const secItems = (data.programFlow ?? []).filter(i => i.section === sec);
+                  if (!secItems.length) return null;
                   return (
                     <FadeUp key={sec}>
                       <div className="flex items-center gap-3 mb-5">
                         <div className="h-px flex-1" style={{ background: color1 + '20' }} />
                         <p className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: textColor1 }}>
-                          {SECTION_LABEL[sec]}
+                          {sectionLabel(sec)}
                         </p>
                         <div className="h-px flex-1" style={{ background: color1 + '20' }} />
                       </div>
 
                       <div className="relative pl-6 border-l-2" style={{ borderColor: color1 + '25' }}>
                         <div className="space-y-5">
-                          {items.map((item, i) => (
+                          {secItems.map((item, i) => (
                             <div key={i} className="relative">
                               <div
                                 className="absolute -left-[25px] top-[5px] w-3 h-3 rounded-full border-2 bg-[#faf7f4]"

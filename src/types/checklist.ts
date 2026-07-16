@@ -1,5 +1,13 @@
 export type ChecklistStatus   = 'pending' | 'in_progress' | 'done' | 'na';
-export type ChecklistCategory = 'documents' | 'ceremony' | 'reception';
+export type ChecklistCategory = string; // built-in: 'documents' | 'ceremony' | 'reception', or any custom
+
+export const BUILT_IN_CATEGORIES: ChecklistCategory[] = ['documents', 'ceremony', 'reception'];
+
+export const BUILT_IN_CATEGORY_LABELS: Record<string, string> = {
+  documents: 'Documents',
+  ceremony:  'Ceremony',
+  reception: 'Reception',
+};
 
 export interface ChecklistItem {
   id: string;

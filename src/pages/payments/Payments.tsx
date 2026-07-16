@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Lock, Paperclip } from 'lucide-react';
+import { CreditCard, Lock, Paperclip, ExternalLink } from 'lucide-react';
 import { useBudget } from '../../hooks/useBudget';
 import { useSuppliers } from '../../hooks/useSuppliers';
 import { usePayments } from '../../hooks/usePayments';
 import { useCurrency } from '../../hooks/useCurrency';
 import type { PaymentEntry, PaymentInstallment, PaymentMap } from '../../types/payment';
-import type { Supplier } from '../../types/supplier';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -192,7 +191,7 @@ function NotesCell({ value, onCommit }: { value: string; onCommit: (v: string) =
 export default function Payments() {
   const navigate = useNavigate();
   const { categories, save: budgetSave } = useBudget();
-  const { suppliers }  = useSuppliers();
+  const { suppliers, save: supplierSave } = useSuppliers();
   const { entries, loading, save } = usePayments();
   const { fmt } = useCurrency();
 
@@ -208,14 +207,11 @@ export default function Payments() {
     }
   }, [loading, entries, initialized]);
 
-  // Items that have at least one supplier assigned
-  const suppliedIds = new Set(suppliers.flatMap(s => s.itemIds));
+  // All categories with items
+  const filtered = categories.filter(cat => cat.items.length > 0);
 
-  const filtered = categories
-    .map(cat => ({ ...cat, items: cat.items.filter(i => suppliedIds.has(i.id)) }))
-    .filter(cat => cat.items.length > 0);
-
-  const supplierByItem = new Map<string, Supplier>();
+  // Map itemId → supplier (first match)
+  const supplierByItem = new Map<string, (typeof suppliers)[number]>();
   for (const sup of suppliers) {
     for (const id of sup.itemIds) {
       if (!supplierByItem.has(id)) supplierByItem.set(id, sup);
@@ -264,6 +260,17 @@ export default function Payments() {
     });
   }
 
+  function assignSupplier(itemId: string, supplierId: string) {
+    const updated = suppliers.map(s => {
+      const has = s.itemIds.includes(itemId);
+      if (s.id === supplierId) {
+        return has ? s : { ...s, itemIds: [...s.itemIds, itemId] };
+      }
+      return has ? { ...s, itemIds: s.itemIds.filter(id => id !== itemId) } : s;
+    });
+    supplierSave(updated);
+  }
+
   // ── Grand totals ───────────────────────────────────────────────────────────
 
   const allItems = filtered.flatMap(c => c.items);
@@ -305,9 +312,9 @@ export default function Payments() {
           <div className="w-14 h-14 rounded-2xl bg-brand-primary/10 flex items-center justify-center mb-4">
             <CreditCard className="w-7 h-7 text-brand-primary" />
           </div>
-          <h2 className="font-serif text-xl font-semibold text-ink mb-2">No items with suppliers yet</h2>
+          <h2 className="font-serif text-xl font-semibold text-ink mb-2">No budget items yet</h2>
           <p className="text-sm text-ink-muted max-w-sm">
-            Assign suppliers to budget items in the <strong>Suppliers</strong> page — they'll appear here for payment tracking.
+            Add items in the <strong>Budget</strong> page — they'll appear here for payment tracking.
           </p>
         </div>
       </div>
@@ -432,19 +439,33 @@ export default function Payments() {
                             <span className="block py-[7px]">{item.name}</span>
                           </td>
 
-                          {/* Supplier (clickable → opens edit modal in Suppliers page) */}
+                          {/* Supplier — assignable dropdown */}
                           <td className={TD}>
-                            {sup ? (
-                              <button
-                                type="button"
-                                onClick={() => navigate('/suppliers', { state: { openSupplierId: sup.id } })}
-                                className="block w-full px-2 py-[7px] text-xs text-left text-brand-primary hover:text-brand-hover hover:underline underline-offset-2 transition-colors whitespace-nowrap"
+                            <div className="flex items-center gap-1 pr-1">
+                              <select
+                                value={sup?.id ?? ''}
+                                onChange={e => assignSupplier(item.id, e.target.value)}
+                                className={[
+                                  'flex-1 px-2 py-[7px] text-xs bg-transparent focus:bg-white focus:outline-none focus:ring-1 focus:ring-inset focus:ring-brand-primary/30 cursor-pointer min-w-0',
+                                  sup ? 'text-brand-primary font-medium' : 'text-ink-muted',
+                                ].join(' ')}
                               >
-                                {sup.name}
-                              </button>
-                            ) : (
-                              <span className="block px-2 py-[7px] text-xs text-app-border">—</span>
-                            )}
+                                <option value="">— none —</option>
+                                {suppliers.map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                              {sup && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/suppliers', { state: { openSupplierId: sup.id } })}
+                                  className="flex-shrink-0 p-1 text-ink-muted/40 hover:text-brand-primary transition-colors"
+                                  title="View supplier"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                           </td>
 
                           {/* Total Price — mirrors budget item.actual; editing here updates the budget */}
