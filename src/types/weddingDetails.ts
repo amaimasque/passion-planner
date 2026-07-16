@@ -9,13 +9,14 @@ export interface BrideGroomInfo {
   lastName: string;
   middleInitial: string; // optional
   suffix: string;        // optional, e.g. "Jr.", "III"
+  nickname: string;      // optional, shown instead of first name on website
   email: string;
   phone: string;
 }
 
 const EMPTY_BRIDE_GROOM: BrideGroomInfo = {
   guestId: '', firstName: '', lastName: '',
-  middleInitial: '', suffix: '', email: '', phone: '',
+  middleInitial: '', suffix: '', nickname: '', email: '', phone: '',
 };
 
 export interface WeddingDetails {

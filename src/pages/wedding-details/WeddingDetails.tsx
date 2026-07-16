@@ -411,6 +411,13 @@ function BrideGroomCard({ role, info, onChange }: {
           </div>
         </div>
 
+        {/* Nickname */}
+        <div>
+          <label className="block text-[10px] font-medium text-ink-muted mb-1">Nickname <span className="font-normal opacity-60">(shown on wedding website)</span></label>
+          <input type="text" value={info.nickname} onChange={e => setField('nickname', e.target.value)}
+            placeholder={`e.g. ${role === 'Bride' ? 'Nikki' : 'Joey'}`} className={fieldCls} />
+        </div>
+
         {/* Contact row */}
         <div className="grid grid-cols-2 gap-2">
           <div>

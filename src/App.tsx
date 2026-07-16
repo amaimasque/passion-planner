@@ -21,6 +21,8 @@ import Media from './pages/media/Media';
 import ProgramFlow from './pages/program-flow/ProgramFlow';
 import RsvpPage from './pages/rsvp/RsvpPage';
 import Landing from './pages/landing/Landing';
+import Attire from './pages/attire/Attire';
+import WeddingWebsite from './pages/wedding-website/WeddingWebsite';
 
 function PrivateLayout({ children }: { children: ReactNode }) {
   return (
@@ -50,9 +52,11 @@ function App() {
           <Route path="/checklist"      element={<PrivateLayout><Checklist /></PrivateLayout>} />
           <Route path="/media"          element={<PrivateLayout><Media /></PrivateLayout>} />
           <Route path="/program-flow"   element={<PrivateLayout><ProgramFlow /></PrivateLayout>} />
+          <Route path="/attire"         element={<PrivateLayout><Attire /></PrivateLayout>} />
           <Route path="/settings"  element={<PrivateLayout><Settings /></PrivateLayout>} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/rsvp/:token" element={<RsvpPage />} />
+          <Route path="/wedding/:slug" element={<WeddingWebsite />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

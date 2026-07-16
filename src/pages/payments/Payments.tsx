@@ -83,14 +83,32 @@ function InstallmentCells({
   value: PaymentInstallment;
   onUpdate: (itemId: string, k: InstallmentKey, f: keyof PaymentInstallment, v: string | number) => void;
 }) {
+  const [localAmount, setLocalAmount] = useState<string>(value.amount ? String(value.amount) : '');
+  const [localDate, setLocalDate] = useState(value.date);
+  const amountFocused = useRef(false);
+  const dateFocused = useRef(false);
+
+  useEffect(() => {
+    if (!amountFocused.current) setLocalAmount(value.amount ? String(value.amount) : '');
+  }, [value.amount]);
+
+  useEffect(() => {
+    if (!dateFocused.current) setLocalDate(value.date);
+  }, [value.date]);
+
   return (
     <>
       {/* Amount */}
       <td className={TD}>
         <input
           type="number" min="0" placeholder="0"
-          value={value.amount || ''}
-          onChange={e => onUpdate(itemId, instKey, 'amount', parseFloat(e.target.value) || 0)}
+          value={localAmount}
+          onChange={e => setLocalAmount(e.target.value)}
+          onFocus={() => { amountFocused.current = true; }}
+          onBlur={() => {
+            amountFocused.current = false;
+            onUpdate(itemId, instKey, 'amount', parseFloat(localAmount) || 0);
+          }}
           className={numInput + ' min-w-[80px]'}
         />
       </td>
@@ -98,8 +116,13 @@ function InstallmentCells({
       <td className={TD}>
         <input
           type="date"
-          value={value.date}
-          onChange={e => onUpdate(itemId, instKey, 'date', e.target.value)}
+          value={localDate}
+          onChange={e => setLocalDate(e.target.value)}
+          onFocus={() => { dateFocused.current = true; }}
+          onBlur={() => {
+            dateFocused.current = false;
+            onUpdate(itemId, instKey, 'date', localDate);
+          }}
           className={dateInput + ' min-w-[120px]'}
         />
       </td>
@@ -119,6 +142,48 @@ function InstallmentCells({
         </div>
       </td>
     </>
+  );
+}
+
+// ── Lazy cells (update only on blur to avoid lag) ─────────────────────────────
+
+function TotalPriceCell({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [local, setLocal] = useState(value ? String(value) : '');
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setLocal(value ? String(value) : '');
+  }, [value]);
+  return (
+    <td className={TD}>
+      <input
+        type="number" min="0" placeholder="0"
+        value={local}
+        onChange={e => setLocal(e.target.value)}
+        onFocus={() => { focused.current = true; }}
+        onBlur={() => { focused.current = false; onCommit(parseFloat(local) || 0); }}
+        className={numInput}
+      />
+    </td>
+  );
+}
+
+function NotesCell({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [local, setLocal] = useState(value);
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setLocal(value);
+  }, [value]);
+  return (
+    <td className={TD}>
+      <input
+        type="text"
+        value={local}
+        onChange={e => setLocal(e.target.value)}
+        onFocus={() => { focused.current = true; }}
+        onBlur={() => { focused.current = false; onCommit(local); }}
+        className={txtInput}
+      />
+    </td>
   );
 }
 
@@ -383,14 +448,10 @@ export default function Payments() {
                           </td>
 
                           {/* Total Price — mirrors budget item.actual; editing here updates the budget */}
-                          <td className={TD}>
-                            <input
-                              type="number" min="0" placeholder="0"
-                              value={item.actual || ''}
-                              onChange={ev => updateActual(item.id, parseFloat(ev.target.value) || 0)}
-                              className={numInput}
-                            />
-                          </td>
+                          <TotalPriceCell
+                            value={item.actual}
+                            onCommit={v => updateActual(item.id, v)}
+                          />
 
                           {/* Installment cells ×4 */}
                           {INSTALLMENTS.map(inst => (
@@ -417,14 +478,10 @@ export default function Payments() {
                           </td>
 
                           {/* Notes */}
-                          <td className={TD}>
-                            <input
-                              type="text"
-                              value={e.notes}
-                              onChange={ev => updateField(item.id, 'notes', ev.target.value)}
-                              className={txtInput}
-                            />
-                          </td>
+                          <NotesCell
+                            value={e.notes}
+                            onCommit={v => updateField(item.id, 'notes', v)}
+                          />
 
                           {/* Rating */}
                           <td className={`${TD} px-1`}>

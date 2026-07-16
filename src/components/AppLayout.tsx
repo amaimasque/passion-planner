@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Sparkles, LayoutDashboard, Wallet, Store, CreditCard, Users, Heart, ListMusic,
   ClipboardList, LayoutGrid, Settings, LogOut, Menu, X, ChevronsLeft, ChevronsRight,
-  Moon, Sun, Image, Presentation, CalendarDays, ExternalLink, Smartphone,
+  Moon, Sun, Image, Presentation, CalendarDays, ExternalLink, Smartphone, Shirt,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: '/suppliers',    icon: Store,            label: 'Suppliers' },
   { to: '/guests',       icon: Users,            label: 'Guests' },
   { to: '/processional', icon: ListMusic,        label: 'Processional' },
+  { to: '/attire',       icon: Shirt,            label: 'Attire' },
   { to: '/seating',      icon: LayoutGrid,       label: 'Seating' },
   { to: '/checklist',    icon: ClipboardList,    label: 'Checklist' },
   { to: '/media',        icon: Image,            label: 'Media & Branding' },
