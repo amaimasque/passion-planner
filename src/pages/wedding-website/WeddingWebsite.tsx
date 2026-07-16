@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { ChevronDown } from 'lucide-react';
@@ -34,14 +34,99 @@ function hasAttire(a: PublicGuestAttire) {
   return a?.genderSplit ? (hasSet(a.men) || hasSet(a.women)) : hasSet(a?.unisex);
 }
 
+// ── Hero sparkles ─────────────────────────────────────────────────────────────
+
+const SPARKLE_CSS = `
+  @keyframes floatSparkle {
+    0%   { opacity: 0;   transform: translateY(0px)    scale(0.3); }
+    15%  { opacity: 0.9; transform: translateY(-18px)  scale(1);   }
+    70%  { opacity: 0.4; transform: translateY(-75px)  scale(0.75);}
+    100% { opacity: 0;   transform: translateY(-120px) scale(0.2); }
+  }
+  .hero-sparkle { animation: floatSparkle ease-in-out infinite; border-radius: 50%; position: absolute; pointer-events: none; }
+`;
+
+const SPARKLES = [
+  { left: '8%',  bottom: '18%', size: 3, dur: '4.2s',  del: '0s'   },
+  { left: '20%', bottom: '32%', size: 2, dur: '5.1s',  del: '0.9s' },
+  { left: '35%', bottom: '14%', size: 4, dur: '3.8s',  del: '1.6s' },
+  { left: '50%', bottom: '42%', size: 2, dur: '4.7s',  del: '0.4s' },
+  { left: '65%', bottom: '22%', size: 3, dur: '5.4s',  del: '1.3s' },
+  { left: '80%', bottom: '36%', size: 2, dur: '4.0s',  del: '2.1s' },
+  { left: '14%', bottom: '58%', size: 2, dur: '6.0s',  del: '0.6s' },
+  { left: '76%', bottom: '52%', size: 3, dur: '5.0s',  del: '1.9s' },
+  { left: '42%', bottom: '62%', size: 2, dur: '4.6s',  del: '2.6s' },
+  { left: '58%', bottom: '68%', size: 3, dur: '3.9s',  del: '0.8s' },
+  { left: '90%', bottom: '28%', size: 2, dur: '5.3s',  del: '3.2s' },
+  { left: '28%', bottom: '75%', size: 2, dur: '4.4s',  del: '1.1s' },
+];
+
+// ── Scroll animation ──────────────────────────────────────────────────────────
+
+function useInView() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.06 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
+}
+
+function FadeUp({ children, delay = 0, className = '' }: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const { ref, visible } = useInView();
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        transition: `opacity 0.65s ease ${delay}ms, transform 0.65s ease ${delay}ms`,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'none' : 'translateY(28px)',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 // ── Section divider ───────────────────────────────────────────────────────────
 
-function Divider({ color }: { color: string }) {
+function FloralDivider({ color }: { color: string }) {
   return (
-    <div className="flex items-center justify-center gap-3 py-2">
-      <div className="h-px flex-1 max-w-[80px]" style={{ background: color + '30' }} />
-      <span style={{ color: color + '60' }} className="text-sm select-none">✦</span>
-      <div className="h-px flex-1 max-w-[80px]" style={{ background: color + '30' }} />
+    <div className="flex items-center justify-center py-5">
+      <svg viewBox="0 0 320 52" className="w-64 sm:w-80 h-12" aria-hidden="true">
+        {/* Left branch */}
+        <line x1="0" y1="26" x2="108" y2="26" stroke={color} strokeWidth="0.6" opacity="0.35" />
+        <ellipse cx="36"  cy="17" rx="14" ry="5"   fill={color} fillOpacity="0.18" transform="rotate(-28 36 17)"  />
+        <ellipse cx="36"  cy="35" rx="14" ry="5"   fill={color} fillOpacity="0.11" transform="rotate(28 36 35)"   />
+        <ellipse cx="66"  cy="15" rx="11" ry="4"   fill={color} fillOpacity="0.15" transform="rotate(-20 66 15)"  />
+        <ellipse cx="66"  cy="37" rx="11" ry="4"   fill={color} fillOpacity="0.09" transform="rotate(20 66 37)"   />
+        <ellipse cx="90"  cy="17" rx="8"  ry="3.5" fill={color} fillOpacity="0.12" transform="rotate(-14 90 17)"  />
+        <ellipse cx="90"  cy="35" rx="8"  ry="3.5" fill={color} fillOpacity="0.07" transform="rotate(14 90 35)"   />
+        {/* Center ornament */}
+        <path d="M160 17 L167 26 L160 35 L153 26Z" fill={color} fillOpacity="0.32" />
+        <circle cx="146" cy="26" r="2"   fill={color} fillOpacity="0.5"  />
+        <circle cx="174" cy="26" r="2"   fill={color} fillOpacity="0.5"  />
+        {/* Right branch (mirrored) */}
+        <line x1="320" y1="26" x2="212" y2="26" stroke={color} strokeWidth="0.6" opacity="0.35" />
+        <ellipse cx="284" cy="17" rx="14" ry="5"   fill={color} fillOpacity="0.18" transform="rotate(28 284 17)"  />
+        <ellipse cx="284" cy="35" rx="14" ry="5"   fill={color} fillOpacity="0.11" transform="rotate(-28 284 35)" />
+        <ellipse cx="254" cy="15" rx="11" ry="4"   fill={color} fillOpacity="0.15" transform="rotate(20 254 15)"  />
+        <ellipse cx="254" cy="37" rx="11" ry="4"   fill={color} fillOpacity="0.09" transform="rotate(-20 254 37)" />
+        <ellipse cx="230" cy="17" rx="8"  ry="3.5" fill={color} fillOpacity="0.12" transform="rotate(14 230 17)"  />
+        <ellipse cx="230" cy="35" rx="8"  ry="3.5" fill={color} fillOpacity="0.07" transform="rotate(-14 230 35)" />
+      </svg>
     </div>
   );
 }
@@ -65,6 +150,53 @@ function AttireRow({ attire, label }: { attire: PublicAttireSet; label?: string 
       </div>
     </div>
   );
+}
+
+// ── Color utilities ───────────────────────────────────────────────────────────
+
+function hexToHsl(hex: string): [number, number, number] {
+  const full = hex.replace('#', '').replace(/^(.)(.)(.)$/, '$1$1$2$2$3$3');
+  const n = parseInt(full, 16);
+  let r = ((n >> 16) & 255) / 255;
+  let g = ((n >> 8) & 255) / 255;
+  let b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let hh = 0, s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) hh = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) hh = ((b - r) / d + 2) / 6;
+    else hh = ((r - g) / d + 4) / 6;
+  }
+  return [hh * 360, s * 100, l * 100];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  h /= 360; s /= 100; l /= 100;
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue2rgb = (t: number) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return '#' + [h + 1 / 3, h, h - 1 / 3]
+    .map(t => Math.round(hue2rgb(t) * 255).toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Returns a version of `hex` that is readable as text on a light background.
+ * If the color is too light (high lightness), it darkens it while preserving hue.
+ */
+function readableOnLight(hex: string): string {
+  if (!hex || !/^#[0-9a-fA-F]{3,6}$/.test(hex)) return '#4a3f35';
+  const [h, s, l] = hexToHsl(hex);
+  return l > 55 ? hslToHex(h, Math.max(s, 30), 38) : hex;
 }
 
 // ── Sticky navigation ─────────────────────────────────────────────────────────
@@ -129,11 +261,11 @@ function WebsiteNav({ coupleName, color1 }: { coupleName: string; color1: string
 
 // ── Processional role card ────────────────────────────────────────────────────
 
-function ProcessionalRoleCard({ role, color1 }: { role: WeddingWebsiteData['processional'][number]; color1: string }) {
+function ProcessionalRoleCard({ role, color1, textColor1 }: { role: WeddingWebsiteData['processional'][number]; color1: string, textColor1: string }) {
   return (
     <div className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-[#e8ddd3]" style={{ background: color1 + '0d' }}>
-        <p style={{ fontFamily: 'Playfair Display, serif', color: color1 }} className="font-bold text-base">
+        <p style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }} className="font-bold text-base">
           {role.name}
         </p>
         {role.subtitle && <p className="text-xs text-[#9a8c7e] mt-0.5">{role.subtitle}</p>}
@@ -233,6 +365,8 @@ export default function WeddingWebsite() {
 
   const color1 = data.motifColors[0]?.hex ?? '#C97B84';
   const color2 = data.motifColors[1]?.hex ?? '#D9B382';
+  // Readable version of color1 for text on the light page background
+  const textColor1 = readableOnLight(color1);
 
   const programBySec = SECTIONS.reduce<Record<string, typeof data.programFlow>>((acc, s) => {
     acc[s] = (data.programFlow ?? []).filter(i => i.section === s);
@@ -251,9 +385,10 @@ export default function WeddingWebsite() {
   return (
     <div className="min-h-screen bg-[#faf7f4]" style={{ fontFamily: 'Inter, sans-serif' }}>
 
-      <WebsiteNav coupleName={coupleName} color1={color1} />
+      <WebsiteNav coupleName={coupleName} color1={textColor1} />
 
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
+      <style>{SPARKLE_CSS}</style>
       <section
         id="section-hero"
         className="relative min-h-screen flex flex-col items-center justify-center text-center overflow-hidden"
@@ -319,7 +454,7 @@ export default function WeddingWebsite() {
 
           {/* Hashtag */}
           {data.eventHashtag && (
-            <p className="text-white/45 text-sm tracking-[0.3em] uppercase">{data.eventHashtag}</p>
+            <p className="text-white/45 text-sm tracking-[0.3em] uppercase">#{data.eventHashtag}</p>
           )}
 
           {/* Bottom ornament */}
@@ -329,6 +464,25 @@ export default function WeddingWebsite() {
             <div className="h-px w-12 bg-white/25" />
           </div>
         </div>
+
+        {/* Sparkle particles */}
+        {SPARKLES.map((s, i) => (
+          <div
+            key={i}
+            className="hero-sparkle"
+            style={{
+              left: s.left,
+              bottom: s.bottom,
+              width: s.size,
+              height: s.size,
+              background: i % 2 === 0
+                ? (data.heroPhotoUrl ? 'rgba(255,255,255,0.7)' : color2 + 'cc')
+                : (data.heroPhotoUrl ? 'rgba(255,255,255,0.5)' : color1 + 'cc'),
+              animationDuration: s.dur,
+              animationDelay: s.del,
+            }}
+          />
+        ))}
 
         {/* Scroll arrow */}
         <div className="absolute bottom-8 left-0 right-0 flex justify-center animate-bounce">
@@ -342,51 +496,56 @@ export default function WeddingWebsite() {
         {/* ── Ceremony & Reception ── */}
         {(data.churchAndAddress || data.receptionVenue) && (
           <section id="section-day" className="py-16">
-            <p
-              style={{ fontFamily: 'Playfair Display, serif', color: color1 }}
-              className="text-center text-3xl font-bold mb-2"
-            >
-              The Wedding Day
-            </p>
-            <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
-              Save these details
-            </p>
+            <FadeUp>
+              <p
+                style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }}
+                className="text-center text-3xl font-bold mb-2"
+              >
+                The Wedding Day
+              </p>
+              <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
+                Save these details
+              </p>
+            </FadeUp>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {data.churchAndAddress && (
-                <div className="bg-white rounded-2xl p-7 text-center shadow-sm border border-[#e8ddd3] space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e]">Ceremony</p>
-                  {data.ceremonyTime && (
-                    <p style={{ fontFamily: 'Playfair Display, serif', color: color1 }} className="text-3xl font-bold">
-                      {fmt12h(data.ceremonyTime)}
-                    </p>
-                  )}
-                  <p className="text-sm text-[#4a3f35] leading-relaxed">{data.churchAndAddress}</p>
-                </div>
+                <FadeUp delay={100}>
+                  <div className="bg-white rounded-2xl p-7 text-center shadow-sm border border-[#e8ddd3] space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e]">Ceremony</p>
+                    {data.ceremonyTime && (
+                      <p style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }} className="text-3xl font-bold">
+                        {fmt12h(data.ceremonyTime)}
+                      </p>
+                    )}
+                    <p className="text-sm text-[#4a3f35] leading-relaxed">{data.churchAndAddress}</p>
+                  </div>
+                </FadeUp>
               )}
               {data.receptionVenue && (
-                <div className="bg-white rounded-2xl p-7 text-center shadow-sm border border-[#e8ddd3] space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e]">Reception</p>
-                  {data.receptionStartTime && (
-                    <p style={{ fontFamily: 'Playfair Display, serif', color: color1 }} className="text-3xl font-bold">
-                      {fmt12h(data.receptionStartTime)}
-                    </p>
-                  )}
-                  <p className="text-sm text-[#4a3f35] leading-relaxed">{data.receptionVenue}</p>
-                </div>
+                <FadeUp delay={200}>
+                  <div className="bg-white rounded-2xl p-7 text-center shadow-sm border border-[#e8ddd3] space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e]">Reception</p>
+                    {data.receptionStartTime && (
+                      <p style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }} className="text-3xl font-bold">
+                        {fmt12h(data.receptionStartTime)}
+                      </p>
+                    )}
+                    <p className="text-sm text-[#4a3f35] leading-relaxed">{data.receptionVenue}</p>
+                  </div>
+                </FadeUp>
               )}
             </div>
 
-            {/* Extra details */}
             {(data.foodServiceType) && (
-              <div className="flex justify-center gap-8 mt-6">
-                {data.foodServiceType && (
+              <FadeUp delay={300}>
+                <div className="flex justify-center gap-8 mt-6">
                   <div className="text-center">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9a8c7e] mb-1">Dining</p>
                     <p className="text-sm text-[#4a3f35]">{data.foodServiceType}</p>
                   </div>
-                )}
-              </div>
+                </div>
+              </FadeUp>
             )}
           </section>
         )}
@@ -394,20 +553,24 @@ export default function WeddingWebsite() {
         {/* ── Processional ── */}
         {hasProcessional && (
           <>
-            <Divider color={color1} />
+            <FloralDivider color={color1} />
             <section id="section-processional" className="py-14">
-              <p
-                style={{ fontFamily: 'Playfair Display, serif', color: color1 }}
-                className="text-center text-3xl font-bold mb-2"
-              >
-                Processional
-              </p>
-              <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
-                Order of entrance
-              </p>
+              <FadeUp>
+                <p
+                  style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }}
+                  className="text-center text-3xl font-bold mb-2"
+                >
+                  Processional
+                </p>
+                <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
+                  Order of entrance
+                </p>
+              </FadeUp>
               <div className="space-y-4">
                 {(data.processional ?? []).map((role, i) => (
-                  <ProcessionalRoleCard key={i} role={role} color1={color1} />
+                  <FadeUp key={i} delay={i * 80}>
+                    <ProcessionalRoleCard role={role} color1={color1} textColor1={textColor1} />
+                  </FadeUp>
                 ))}
               </div>
             </section>
@@ -417,54 +580,58 @@ export default function WeddingWebsite() {
         {/* ── Attire ── */}
         {showAttire && (
           <>
-            <Divider color={color1} />
+            <FloralDivider color={color1} />
             <section id="section-attire" className="py-14">
-              <p
-                style={{ fontFamily: 'Playfair Display, serif', color: color1 }}
-                className="text-center text-3xl font-bold mb-2"
-              >
-                What to Wear
-              </p>
-              <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
-                Dress code
-              </p>
+              <FadeUp>
+                <p
+                  style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }}
+                  className="text-center text-3xl font-bold mb-2"
+                >
+                  What to Wear
+                </p>
+                <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
+                  Dress code
+                </p>
+              </FadeUp>
 
               <div className="space-y-4">
-                {/* Default guest attire */}
                 {(data.attire || hasAttire(data.guestAttire)) && (
-                  <div className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm p-6 space-y-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9a8c7e]">Guests</p>
-                    {data.attire && (
-                      <p className="text-sm text-[#4a3f35]">{data.attire}</p>
-                    )}
-                    {hasAttire(data.guestAttire) && (
-                      data.guestAttire.genderSplit ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                          <AttireRow attire={data.guestAttire.men} label="Men" />
-                          <AttireRow attire={data.guestAttire.women} label="Women" />
-                        </div>
-                      ) : (
-                        <AttireRow attire={data.guestAttire.unisex} />
-                      )
-                    )}
-                  </div>
+                  <FadeUp delay={100}>
+                    <div className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm p-6 space-y-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9a8c7e]">Guests</p>
+                      {data.attire && (
+                        <p className="text-sm text-[#4a3f35]">{data.attire}</p>
+                      )}
+                      {hasAttire(data.guestAttire) && (
+                        data.guestAttire.genderSplit ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <AttireRow attire={data.guestAttire.men} label="Men" />
+                            <AttireRow attire={data.guestAttire.women} label="Women" />
+                          </div>
+                        ) : (
+                          <AttireRow attire={data.guestAttire.unisex} />
+                        )
+                      )}
+                    </div>
+                  </FadeUp>
                 )}
 
-                {/* Per-role attires */}
                 {(data.roleAttires ?? []).filter(ra => hasAttire(ra.attire)).map((ra, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm p-6 space-y-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: color1 }}>
-                      {ra.roleName}
-                    </p>
-                    {ra.attire.genderSplit ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <AttireRow attire={ra.attire.men} label="Men" />
-                        <AttireRow attire={ra.attire.women} label="Women" />
-                      </div>
-                    ) : (
-                      <AttireRow attire={ra.attire.unisex} />
-                    )}
-                  </div>
+                  <FadeUp key={i} delay={(i + 2) * 80}>
+                    <div className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm p-6 space-y-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: textColor1 }}>
+                        {ra.roleName}
+                      </p>
+                      {ra.attire.genderSplit ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          <AttireRow attire={ra.attire.men} label="Men" />
+                          <AttireRow attire={ra.attire.women} label="Women" />
+                        </div>
+                      ) : (
+                        <AttireRow attire={ra.attire.unisex} />
+                      )}
+                    </div>
+                  </FadeUp>
                 ))}
               </div>
             </section>
@@ -474,27 +641,29 @@ export default function WeddingWebsite() {
         {/* ── Program Flow ── */}
         {hasProgramFlow && (
           <>
-            <Divider color={color1} />
+            <FloralDivider color={color1} />
             <section id="section-program" className="py-14">
-              <p
-                style={{ fontFamily: 'Playfair Display, serif', color: color1 }}
-                className="text-center text-3xl font-bold mb-2"
-              >
-                Program
-              </p>
-              <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
-                The order of events
-              </p>
+              <FadeUp>
+                <p
+                  style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }}
+                  className="text-center text-3xl font-bold mb-2"
+                >
+                  Program
+                </p>
+                <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
+                  The order of events
+                </p>
+              </FadeUp>
 
               <div className="space-y-10">
                 {SECTIONS.map(sec => {
                   const items = programBySec[sec];
                   if (!items?.length) return null;
                   return (
-                    <div key={sec}>
+                    <FadeUp key={sec}>
                       <div className="flex items-center gap-3 mb-5">
                         <div className="h-px flex-1" style={{ background: color1 + '20' }} />
-                        <p className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: color1 }}>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: textColor1 }}>
                           {SECTION_LABEL[sec]}
                         </p>
                         <div className="h-px flex-1" style={{ background: color1 + '20' }} />
@@ -525,7 +694,7 @@ export default function WeddingWebsite() {
                           ))}
                         </div>
                       </div>
-                    </div>
+                    </FadeUp>
                   );
                 })}
               </div>
@@ -536,25 +705,28 @@ export default function WeddingWebsite() {
         {/* ── Seating ── */}
         {hasSeating && (
           <>
-            <Divider color={color1} />
+            <FloralDivider color={color1} />
             <section id="section-seating" className="py-14">
-              <p
-                style={{ fontFamily: 'Playfair Display, serif', color: color1 }}
-                className="text-center text-3xl font-bold mb-2"
-              >
-                Find Your Seat
-              </p>
-              <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
-                Seating arrangement
-              </p>
+              <FadeUp>
+                <p
+                  style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }}
+                  className="text-center text-3xl font-bold mb-2"
+                >
+                  Find Your Seat
+                </p>
+                <p className="text-center text-xs tracking-[0.25em] uppercase text-[#9a8c7e] mb-10">
+                  Seating arrangement
+                </p>
+              </FadeUp>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(data.seating ?? []).filter(t => t.guestNames.length > 0).map((table, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm overflow-hidden">
+                  <FadeUp key={i} delay={i * 60}>
+                  <div className="bg-white rounded-2xl border border-[#e8ddd3] shadow-sm overflow-hidden">
                     {/* Table header */}
                     <div className="px-5 py-3 border-b border-[#e8ddd3]" style={{ background: color1 + '10' }}>
                       <p
-                        style={{ fontFamily: 'Playfair Display, serif', color: color1 }}
+                        style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }}
                         className="font-bold text-sm"
                       >
                         {table.name}
@@ -573,6 +745,7 @@ export default function WeddingWebsite() {
                       ))}
                     </ul>
                   </div>
+                  </FadeUp>
                 ))}
               </div>
             </section>
@@ -582,35 +755,39 @@ export default function WeddingWebsite() {
         {/* ── Theme & Motif ── */}
         {(data.theme || data.motifColors.length > 0) && (
           <>
-            <Divider color={color1} />
+            <FloralDivider color={color1} />
             <section id="section-motif" className="py-14 text-center space-y-8">
-              {data.theme && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e] mb-2">Theme</p>
-                  <p style={{ fontFamily: 'Playfair Display, serif', color: color1 }} className="text-2xl font-bold">
-                    {data.theme}
-                  </p>
-                </div>
-              )}
+              <FadeUp>
+                {data.theme && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e] mb-2">Theme</p>
+                    <p style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }} className="text-2xl font-bold">
+                      {data.theme}
+                    </p>
+                  </div>
+                )}
+              </FadeUp>
 
               {data.motifColors.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e] mb-5">
-                    Our Motif Colors
-                  </p>
-                  <div className="flex items-center justify-center gap-5 flex-wrap">
-                    {data.motifColors.map((c, i) => (
-                      <div key={i} className="flex flex-col items-center gap-2">
-                        <div
-                          className="w-14 h-14 rounded-full shadow-md ring-4 ring-white"
-                          style={{ background: c.hex }}
-                        />
-                        {c.name && <span className="text-xs text-[#9a8c7e]">{c.name}</span>}
-                        <span className="text-[10px] text-[#b0a89f] font-mono">{c.hex}</span>
-                      </div>
-                    ))}
+                <FadeUp delay={100}>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9a8c7e] mb-5">
+                      Our Motif Colors
+                    </p>
+                    <div className="flex items-center justify-center gap-5 flex-wrap">
+                      {data.motifColors.map((c, i) => (
+                        <div key={i} className="flex flex-col items-center gap-2">
+                          <div
+                            className="w-14 h-14 rounded-full shadow-md ring-4 ring-white"
+                            style={{ background: c.hex }}
+                          />
+                          {c.name && <span className="text-xs text-[#9a8c7e]">{c.name}</span>}
+                          <span className="text-[10px] text-[#b0a89f] font-mono">{c.hex}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </FadeUp>
               )}
             </section>
           </>
@@ -623,6 +800,7 @@ export default function WeddingWebsite() {
         className="mt-8 py-16 text-center px-6"
         style={{ background: `linear-gradient(to bottom, transparent, ${color1}12)` }}
       >
+        <FadeUp>
         <div className="flex items-center justify-center gap-4 mb-8">
           <div className="h-px w-16" style={{ background: color1 + '30' }} />
           <span style={{ color: color1 + '50' }} className="text-sm">✦</span>
@@ -630,8 +808,8 @@ export default function WeddingWebsite() {
         </div>
 
         {data.eventHashtag && (
-          <p style={{ fontFamily: 'Playfair Display, serif', color: color1 }} className="text-3xl font-bold mb-2">
-            {data.eventHashtag}
+          <p style={{ fontFamily: 'Playfair Display, serif', color: textColor1 }} className="text-3xl font-bold mb-2">
+            #{data.eventHashtag}
           </p>
         )}
 
@@ -645,6 +823,7 @@ export default function WeddingWebsite() {
         )}
 
         <p className="text-[11px] text-[#c4bbb4] mt-8">Planned with ♡ using Passion Planner</p>
+        </FadeUp>
       </footer>
     </div>
   );
