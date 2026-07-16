@@ -63,6 +63,7 @@ export function useProgramFlow() {
   const save = useCallback(async (updated: ProgramItem[], sections?: string[]) => {
     const cs = sections ?? customSections;
     await saveAll(updated, cs, sectionOrder);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, customSections, sectionOrder, saveAll]);
 
   const saveCustomSections = useCallback(async (sections: string[]) => {
@@ -73,10 +74,12 @@ export function useProgramFlow() {
       ...sections.filter(s => !sectionOrder.includes(s)),
     ];
     await saveAll(items, sections, newOrder);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, items, sectionOrder, saveAll]);
 
   const saveSectionOrder = useCallback(async (order: string[]) => {
     await saveAll(items, customSections, order);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, items, customSections, saveAll]);
 
   return { items, customSections, sectionOrder, loading, save, saveCustomSections, saveSectionOrder };
